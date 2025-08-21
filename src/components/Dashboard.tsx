@@ -202,7 +202,9 @@ const Dashboard = () => {
     );
   }
 
-  const activeApiKey = apiKeys.find(key => key.is_active);
+  const activeApiKey = apiKeys.find(key => key.is_active && key.key);
+  console.log('Active API key found:', activeApiKey ? 'Yes' : 'No');
+  console.log('API keys:', apiKeys.map(k => ({ id: k.id, name: k.name, active: k.is_active, hasKey: !!k.key })));
 
   return (
     <div className="container mx-auto py-8 space-y-8">

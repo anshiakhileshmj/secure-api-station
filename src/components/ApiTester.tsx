@@ -23,11 +23,19 @@ const ApiTester: React.FC<ApiTesterProps> = ({ apiKey }) => {
   const [error, setError] = useState<string | null>(null);
 
   const testCheckEndpoint = async () => {
+    if (!apiKey) {
+      setError('No API key available');
+      toast.error('No API key found. Please create an API key first.');
+      return;
+    }
+
     setLoading(true);
     setResult(null);
     setError(null);
 
     try {
+      console.log('Making API request with key:', apiKey.substring(0, 10) + '...');
+      
       const response = await fetch('https://resumeak.onrender.com/v1/check', {
         method: 'POST',
         headers: {
@@ -55,17 +63,26 @@ const ApiTester: React.FC<ApiTesterProps> = ({ apiKey }) => {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMessage);
       toast.error(`API test failed: ${errorMessage}`);
+      console.error('API test error:', err);
     } finally {
       setLoading(false);
     }
   };
 
   const testRelayEndpoint = async () => {
+    if (!apiKey) {
+      setError('No API key available');
+      toast.error('No API key found. Please create an API key first.');
+      return;
+    }
+
     setLoading(true);
     setResult(null);
     setError(null);
 
     try {
+      console.log('Making relay API request with key:', apiKey.substring(0, 10) + '...');
+      
       const response = await fetch('https://resumeak.onrender.com/v1/relay', {
         method: 'POST',
         headers: {
@@ -91,6 +108,7 @@ const ApiTester: React.FC<ApiTesterProps> = ({ apiKey }) => {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMessage);
       toast.error(`API test failed: ${errorMessage}`);
+      console.error('Relay API test error:', err);
     } finally {
       setLoading(false);
     }
@@ -116,6 +134,12 @@ const ApiTester: React.FC<ApiTesterProps> = ({ apiKey }) => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {!apiKey && (
+          <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+            <p className="text-yellow-800 text-sm">⚠️ No API key available. Please create an active API key first to test the endpoints.</p>
+          </div>
+        )}
+        
         <div className="space-y-2">
           <Label>Select Endpoint to Test</Label>
           <div className="flex gap-2">
@@ -172,7 +196,7 @@ const ApiTester: React.FC<ApiTesterProps> = ({ apiKey }) => {
           </div>
         )}
 
-        <Button onClick={handleTest} disabled={loading} className="w-full">
+        <Button onClick={handleTest} disabled={loading || !apiKey} className="w-full">
           {loading ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -194,17 +218,23 @@ const ApiTester: React.FC<ApiTesterProps> = ({ apiKey }) => {
                 {JSON.stringify(result, null, 2)}
               </pre>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant={result.allowed ? "default" : "destructive"}>
-                {result.allowed ? "Allowed" : "Blocked"}
-              </Badge>
-              <Badge variant="outline">
-                {result.risk_band} Risk
-              </Badge>
-              <Badge variant="secondary">
-                Score: {result.risk_score}
-              </Badge>
-            </div>
+            {result.allowed !== undefined && (
+              <div className="flex items-center gap-2">
+                <Badge variant={result.allowed ? "default" : "destructive"}>
+                  {result.allowed ? "Allowed" : "Blocked"}
+                </Badge>
+                {result.risk_band && (
+                  <Badge variant="outline">
+                    {result.risk_band} Risk
+                  </Badge>
+                )}
+                {result.risk_score !== undefined && (
+                  <Badge variant="secondary">
+                    Score: {result.risk_score}
+                  </Badge>
+                )}
+              </div>
+            )}
           </div>
         )}
 
