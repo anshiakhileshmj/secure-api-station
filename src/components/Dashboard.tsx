@@ -1,33 +1,21 @@
 
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Key, 
-  Plus, 
-  Copy, 
-  RotateCcw, 
-  Trash2, 
-  Eye, 
-  EyeOff, 
-  AlertCircle,
-  CheckCircle,
-  Calendar,
-  Activity 
-} from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { Copy, Eye, EyeOff, RotateCw, Trash2, Plus } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface ApiKey {
   id: string;
   name: string;
   key: string;
   key_hash: string;
+  partner_id: string;
   is_active: boolean;
   created_at: string;
   last_used_at: string | null;
@@ -37,7 +25,6 @@ interface ApiKey {
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -63,81 +50,71 @@ const Dashboard = () => {
       setApiKeys(data || []);
     } catch (error) {
       console.error('Error fetching API keys:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch API keys",
-        variant: "destructive",
-      });
+      toast.error('Failed to fetch API keys');
     } finally {
       setLoading(false);
     }
   };
 
+  const generateApiKey = () => {
+    const prefix = 'wm_';
+    const randomPart = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('')
+      .toUpperCase();
+    return prefix + randomPart;
+  };
+
   const createApiKey = async () => {
     if (!newKeyName.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a name for your API key",
-        variant: "destructive",
-      });
+      toast.error('Please enter a name for your API key');
       return;
     }
 
     setCreating(true);
     try {
-      const { data, error } = await supabase.rpc('generate_api_key');
-      
-      if (error) throw error;
-      
-      const newKey = data;
-      
-      const { error: insertError } = await supabase
+      const apiKey = generateApiKey();
+      const partnerId = user?.id || '';
+
+      const { data, error } = await supabase
         .from('api_keys')
         .insert({
+          name: newKeyName.trim(),
+          key: apiKey,
+          key_hash: await hashApiKey(apiKey),
+          partner_id: partnerId,
           user_id: user?.id,
-          name: newKeyName,
-          key: newKey,
-          key_hash: await hashApiKey(newKey),
           is_active: true,
           rate_limit_per_minute: 60
-        });
+        })
+        .select()
+        .single();
 
-      if (insertError) throw insertError;
+      if (error) throw error;
 
-      await fetchApiKeys();
+      setApiKeys(prev => [data, ...prev]);
       setNewKeyName('');
       setShowCreateForm(false);
-      
-      toast({
-        title: "Success",
-        description: "API key created successfully",
-      });
+      toast.success('API key created successfully!');
     } catch (error) {
       console.error('Error creating API key:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create API key",
-        variant: "destructive",
-      });
+      toast.error('Failed to create API key');
     } finally {
       setCreating(false);
     }
   };
 
-  const hashApiKey = async (apiKey: string): Promise<string> => {
+  const hashApiKey = async (key: string) => {
     const encoder = new TextEncoder();
-    const data = encoder.encode(apiKey);
+    const data = encoder.encode(key);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
-  const copyToClipboard = (text: string, keyName: string) => {
+  const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
-    toast({
-      title: "Copied",
-      description: `${keyName} copied to clipboard`,
-    });
+    toast.success(`${label} copied to clipboard!`);
   };
 
   const toggleKeyVisibility = (keyId: string) => {
@@ -150,7 +127,30 @@ const Dashboard = () => {
     setVisibleKeys(newVisible);
   };
 
-  const revokeApiKey = async (keyId: string, keyName: string) => {
+  const rotateApiKey = async (keyId: string, keyName: string) => {
+    try {
+      const newApiKey = generateApiKey();
+      
+      const { error } = await supabase
+        .from('api_keys')
+        .update({
+          key: newApiKey,
+          key_hash: await hashApiKey(newApiKey),
+          last_used_at: null
+        })
+        .eq('id', keyId);
+
+      if (error) throw error;
+
+      await fetchApiKeys();
+      toast.success('API key rotated successfully!');
+    } catch (error) {
+      console.error('Error rotating API key:', error);
+      toast.error('Failed to rotate API key');
+    }
+  };
+
+  const revokeApiKey = async (keyId: string) => {
     try {
       const { error } = await supabase
         .from('api_keys')
@@ -159,55 +159,38 @@ const Dashboard = () => {
 
       if (error) throw error;
 
-      await fetchApiKeys();
-      toast({
-        title: "Success",
-        description: `${keyName} has been revoked`,
-      });
+      setApiKeys(prev => prev.map(key => 
+        key.id === keyId ? { ...key, is_active: false } : key
+      ));
+      toast.success('API key revoked successfully!');
     } catch (error) {
       console.error('Error revoking API key:', error);
-      toast({
-        title: "Error",
-        description: "Failed to revoke API key",
-        variant: "destructive",
-      });
+      toast.error('Failed to revoke API key');
     }
   };
 
-  const rotateApiKey = async (keyId: string, keyName: string) => {
+  const reactivateApiKey = async (keyId: string) => {
     try {
-      const { data: newKey, error: generateError } = await supabase.rpc('generate_api_key');
-      
-      if (generateError) throw generateError;
-
-      const { error: updateError } = await supabase
+      const { error } = await supabase
         .from('api_keys')
-        .update({ 
-          key: newKey,
-          key_hash: await hashApiKey(newKey)
-        })
+        .update({ is_active: true })
         .eq('id', keyId);
 
-      if (updateError) throw updateError;
+      if (error) throw error;
 
-      await fetchApiKeys();
-      toast({
-        title: "Success",
-        description: `${keyName} has been rotated`,
-      });
+      setApiKeys(prev => prev.map(key => 
+        key.id === keyId ? { ...key, is_active: true } : key
+      ));
+      toast.success('API key reactivated successfully!');
     } catch (error) {
-      console.error('Error rotating API key:', error);
-      toast({
-        title: "Error",
-        description: "Failed to rotate API key",
-        variant: "destructive",
-      });
+      console.error('Error reactivating API key:', error);
+      toast.error('Failed to reactivate API key');
     }
   };
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto py-8">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-muted rounded w-1/4"></div>
           <div className="h-32 bg-muted rounded"></div>
@@ -218,127 +201,185 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-8">
-      <div className="flex justify-between items-center">
+    <div className="container mx-auto py-8 space-y-8">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-blue-400 bg-clip-text text-transparent">
-            API Dashboard
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Manage your API keys and monitor usage
-          </p>
+          <h1 className="text-3xl font-bold">API Keys</h1>
+          <p className="text-muted-foreground">Manage your API keys for accessing the Relay API</p>
         </div>
-        
         <Button 
           onClick={() => setShowCreateForm(true)}
-          className="btn-primary"
+          className="bg-primary hover:bg-primary/90"
         >
           <Plus className="h-4 w-4 mr-2" />
           Create API Key
         </Button>
       </div>
 
+      {/* API Endpoints Info */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Relay API Endpoints</CardTitle>
+          <CardDescription>Your deployed API is available at</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Base URL</Label>
+            <div className="flex items-center gap-2">
+              <Input 
+                value="https://resumeak.onrender.com" 
+                readOnly 
+                className="font-mono text-sm"
+              />
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => copyToClipboard("https://resumeak.onrender.com", "Base URL")}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Check Endpoint</Label>
+              <code className="block p-2 bg-muted rounded text-sm">
+                POST /v1/check
+              </code>
+            </div>
+            <div className="space-y-2">
+              <Label>Relay Endpoint</Label>
+              <code className="block p-2 bg-muted rounded text-sm">
+                POST /v1/relay
+              </code>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Documentation</Label>
+            <div className="flex items-center gap-2">
+              <Input 
+                value="https://resumeak.onrender.com/docs" 
+                readOnly 
+                className="font-mono text-sm"
+              />
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => window.open("https://resumeak.onrender.com/docs", "_blank")}
+              >
+                Open
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Create API Key Form */}
       {showCreateForm && (
-        <Card className="card-glass">
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Key className="h-5 w-5" />
-              Create New API Key
-            </CardTitle>
-            <CardDescription>
-              Generate a new API key for your applications
-            </CardDescription>
+            <CardTitle>Create New API Key</CardTitle>
+            <CardDescription>Enter a name for your new API key</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="keyName">API Key Name</Label>
-                <Input
-                  id="keyName"
-                  placeholder="e.g., Production App, Development"
-                  value={newKeyName}
-                  onChange={(e) => setNewKeyName(e.target.value)}
-                  className="bg-muted/50 mt-2"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  onClick={createApiKey} 
-                  disabled={creating}
-                  className="btn-primary"
-                >
-                  {creating ? 'Creating...' : 'Create Key'}
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowCreateForm(false)}
-                  className="btn-secondary"
-                >
-                  Cancel
-                </Button>
-              </div>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="keyName">Key Name</Label>
+              <Input
+                id="keyName"
+                placeholder="e.g., Production App, Development, etc."
+                value={newKeyName}
+                onChange={(e) => setNewKeyName(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                onClick={createApiKey} 
+                disabled={creating}
+                className="bg-primary hover:bg-primary/90"
+              >
+                {creating ? 'Creating...' : 'Create API Key'}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowCreateForm(false);
+                  setNewKeyName('');
+                }}
+              >
+                Cancel
+              </Button>
             </div>
           </CardContent>
         </Card>
       )}
 
-      <div className="grid gap-6">
+      {/* API Keys List */}
+      <div className="space-y-4">
         {apiKeys.length === 0 ? (
-          <Card className="card-glass">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Key className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No API Keys</h3>
-              <p className="text-muted-foreground text-center mb-4">
-                Create your first API key to start using the platform
-              </p>
-              <Button 
-                onClick={() => setShowCreateForm(true)}
-                className="btn-primary"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Create API Key
-              </Button>
+          <Card>
+            <CardContent className="py-8 text-center">
+              <p className="text-muted-foreground">No API keys found. Create your first API key to get started.</p>
             </CardContent>
           </Card>
         ) : (
           apiKeys.map((apiKey) => (
-            <Card key={apiKey.id} className="card-glass">
+            <Card key={apiKey.id}>
               <CardHeader>
-                <div className="flex justify-between items-start">
+                <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="flex items-center gap-2">
-                      <Key className="h-5 w-5" />
                       {apiKey.name}
+                      <Badge variant={apiKey.is_active ? "default" : "secondary"}>
+                        {apiKey.is_active ? "Active" : "Revoked"}
+                      </Badge>
                     </CardTitle>
-                    <CardDescription className="flex items-center gap-4 mt-2">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
-                        Created {new Date(apiKey.created_at).toLocaleDateString()}
-                      </span>
+                    <CardDescription>
+                      Created {new Date(apiKey.created_at).toLocaleDateString()}
                       {apiKey.last_used_at && (
-                        <span className="flex items-center gap-1">
-                          <Activity className="h-4 w-4" />
-                          Last used {new Date(apiKey.last_used_at).toLocaleDateString()}
-                        </span>
+                        <> • Last used {new Date(apiKey.last_used_at).toLocaleDateString()}</>
                       )}
                     </CardDescription>
                   </div>
-                  <Badge variant={apiKey.is_active ? "default" : "secondary"}>
-                    {apiKey.is_active ? "Active" : "Revoked"}
-                  </Badge>
+                  <div className="flex gap-2">
+                    {apiKey.is_active ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => rotateApiKey(apiKey.id, apiKey.name)}
+                        >
+                          <RotateCw className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => revokeApiKey(apiKey.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => reactivateApiKey(apiKey.id)}
+                      >
+                        Reactivate
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
-              
               <CardContent className="space-y-4">
-                <div>
+                <div className="space-y-2">
                   <Label>API Key</Label>
-                  <div className="flex items-center gap-2 mt-2">
-                    <div className="api-key-display flex-1">
-                      {visibleKeys.has(apiKey.id) 
-                        ? apiKey.key 
-                        : `${apiKey.key.substring(0, 8)}${'*'.repeat(24)}`
-                      }
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type={visibleKeys.has(apiKey.id) ? "text" : "password"}
+                      value={apiKey.key}
+                      readOnly
+                      className="font-mono text-sm"
+                    />
                     <Button
                       variant="outline"
                       size="sm"
@@ -353,39 +394,35 @@ const Dashboard = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => copyToClipboard(apiKey.key, apiKey.name)}
+                      onClick={() => copyToClipboard(apiKey.key, "API key")}
                     >
                       <Copy className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    Rate limit: {apiKey.rate_limit_per_minute} requests/minute
-                  </span>
-                  
-                  <div className="flex gap-2">
-                    {apiKey.is_active && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => rotateApiKey(apiKey.id, apiKey.name)}
-                        >
-                          <RotateCcw className="h-4 w-4 mr-1" />
-                          Rotate
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => revokeApiKey(apiKey.id, apiKey.name)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Revoke
-                        </Button>
-                      </>
-                    )}
+                <div className="space-y-2">
+                  <Label>Partner ID</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={apiKey.partner_id}
+                      readOnly
+                      className="font-mono text-sm"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyToClipboard(apiKey.partner_id, "Partner ID")}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
+                  <div>
+                    <strong>Rate Limit:</strong> {apiKey.rate_limit_per_minute} req/min
+                  </div>
+                  <div>
+                    <strong>Key ID:</strong> {apiKey.id}
                   </div>
                 </div>
               </CardContent>
@@ -393,13 +430,6 @@ const Dashboard = () => {
           ))
         )}
       </div>
-
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Keep your API keys secure and never share them publicly. Rotate keys regularly for enhanced security.
-        </AlertDescription>
-      </Alert>
     </div>
   );
 };
