@@ -1,15 +1,15 @@
 
 import React from 'react';
 import Navigation from '@/components/Navigation';
-import Hero from '@/components/Hero';
+import AuthForm from '@/components/AuthForm';
 
-const Index = () => {
+const Auth = () => {
   return (
     <div className="min-h-screen">
       <Navigation />
-      <Hero />
+      <AuthForm />
     </div>
   );
 };
 
-export default Index;
+export default Auth;
