@@ -1,9 +1,11 @@
 import os
 from typing import Optional, Dict, List, Any, Tuple
 
-from fastapi import FastAPI, Header, HTTPException, Depends
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Header, HTTPException, Depends, Security
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.openapi.utils import get_openapi
 from pydantic import BaseModel, Field, ConfigDict
 from web3 import Web3
 
@@ -45,7 +47,22 @@ class CheckRequest(BaseModel):
 	asset: Optional[str] = None
 	features: Optional[List[FeatureHitIn]] = None
 
-	model_config = ConfigDict(populate_by_name=True)
+	# Provide Swagger example so the UI is pre-filled with valid data
+	model_config = ConfigDict(
+		populate_by_name=True,
+		json_schema_extra={
+			"example": {
+				"chain": "ethereum",
+				"to": "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
+				"from": "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
+				"value": "1000000000000000000",
+				"asset": "ETH",
+				"features": [
+					{ "key": "value_gt_10k", "base": 10, "occurredAt": "2025-08-21T10:00:00Z" }
+				]
+			}
+		}
+	)
 
 
 class RelayRequest(BaseModel):
@@ -53,6 +70,17 @@ class RelayRequest(BaseModel):
 	rawTx: str
 	idempotencyKey: Optional[str] = None
 	features: Optional[List[FeatureHitIn]] = None
+
+	model_config = ConfigDict(
+		json_schema_extra={
+			"example": {
+				"chain": "ethereum",
+				"rawTx": "0x02f86b01843b9aca00847735940082520894b60e8dd61c5d32be8058bb8eb970870f07233155080c080a0...",
+				"idempotencyKey": "example-key-123",
+				"features": [ { "key": "value_gt_10k", "base": 10, "occurredAt": "2025-08-21T10:00:00Z" } ]
+			}
+		}
+	)
 
 
 class RelayResponse(BaseModel):
@@ -64,7 +92,11 @@ class RelayResponse(BaseModel):
 	status: Optional[str] = None
 
 
-app = FastAPI(title="Relay API", version="1.2.0")
+app = FastAPI(
+    title="Relay API", 
+    version="1.2.0",
+    openapi_tags=[{"name": "default", "description": "Relay API endpoints"}]
+)
 
 # CORS for frontend
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:8080")
@@ -78,18 +110,32 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+# Configure OpenAPI security scheme for Swagger UI
+app.openapi_schema = None  # Force regeneration
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        openapi_version="3.0.2",
+        description="Relay API for blockchain risk assessment and transaction relay",
+        routes=app.routes,
+    )
+    # Add security scheme
+    openapi_schema["components"]["securitySchemes"] = {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "API Key"
+        }
+    }
+    # Apply security to all endpoints
+    openapi_schema["security"] = [{"BearerAuth": []}]
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
 
-def get_partner_id_from_api_key(authorization: Optional[str] = Header(default=None)) -> str:
-	if not authorization or not authorization.startswith("Bearer "):
-		raise HTTPException(status_code=401, detail="Missing API key")
-	api_key = authorization[7:]
-	sb = get_supabase()
-	res = sb.table("api_keys").select("partner_id,active").eq("key", api_key).limit(1).execute()
-	rows = res.data or []
-	row = rows[0] if rows else None
-	if not row or not row.get("active"):
-		raise HTTPException(status_code=403, detail="Invalid API key")
-	return str(row.get("partner_id"))
+app.openapi = custom_openapi
 
 
 w3_clients: Dict[str, Web3] = {}
@@ -137,6 +183,44 @@ def get_w3(chain: str) -> Web3:
 
 sanctions_checker = SanctionsChecker()
 
+bearer_scheme = HTTPBearer(auto_error=False)
+
+def get_partner_id_from_api_key(authorization: Optional[str] = Header(default=None)) -> str:
+	# Support both "Bearer <key>" and raw key in Authorization header,
+	# and also FastAPI HTTPBearer if configured later.
+	api_key = None
+	if authorization:
+		api_key = authorization[7:] if authorization.startswith("Bearer ") else authorization
+	if not api_key:
+		raise HTTPException(status_code=401, detail="Missing API key")
+	
+	try:
+		sb = get_supabase()
+		# Try to find by key_hash first (primary storage), then by key (fallback)
+		res = sb.table("api_keys").select("partner_id,is_active").eq("key_hash", api_key).limit(1).execute()
+		rows = res.data or []
+		if not rows:
+			# Fallback to key column if key_hash not found
+			res = sb.table("api_keys").select("partner_id,is_active").eq("key", api_key).limit(1).execute()
+			rows = res.data or []
+		
+		row = rows[0] if rows else None
+		if not row:
+			raise HTTPException(status_code=403, detail="API key not found")
+		if not row.get("is_active"):
+			raise HTTPException(status_code=403, detail="API key is inactive")
+		
+		partner_id = row.get("partner_id")
+		if not partner_id:
+			raise HTTPException(status_code=500, detail="API key missing partner_id")
+		
+		return str(partner_id)
+	except HTTPException:
+		raise
+	except Exception as e:
+		print(f"Error validating API key: {e}")
+		raise HTTPException(status_code=500, detail="Internal server error during API key validation")
+
 
 @app.on_event("startup")
 async def startup_event() -> None:
@@ -163,61 +247,99 @@ def _apply_policy(sanctioned: bool, score: int, band: str) -> Tuple[bool, Option
 	return True, None, False
 
 
-async def make_decision_with_risk(to_addr: str, features: Optional[List[FeatureHitIn]]) -> tuple[Decision, List[str], Optional[str]]:
-	"""If features provided: compute risk now; else fall back to DB cached risk.
+async def make_decision_with_risk(to_addr: str, features: Optional[List[FeatureHitIn]], 
+                                 transaction_context: Optional[Dict] = None,
+                                 network_context: Optional[Dict] = None) -> tuple[Decision, List[str], Optional[str]]:
+	"""Enhanced risk assessment using the new enterprise risk model.
 	Returns (Decision, reasons, status)
 	"""
 	reasons: List[str] = []
 	sanctioned = await sanctions_checker.is_sanctioned(to_addr)
+	
 	if features:
+		# Convert features to domain objects
 		hits = [f.to_domain() for f in features]
-		score, band, reasons, applied = compute_risk_score(hits, sanctioned)
+		
+		# Use new risk model with context
+		score, band, reasons, applied = compute_risk_score(
+			hits, 
+			sanctioned,
+			transaction_context=transaction_context,
+			network_context=network_context
+		)
+		
 		try:
+			# Enhanced logging with new model
 			log_risk_events(to_addr, hits, applied)
-			upsert_risk_score(to_addr, score, band)
-		except Exception:
-			pass
+			upsert_risk_score(to_addr, score, band, reasons)
+		except Exception as e:
+			print(f"Warning: Failed to log risk data: {e}")
+		
 		allowed, status, alert = _apply_policy(sanctioned, score, band)
 		if alert:
 			reasons = ["ALERT: risk_score==50"] + reasons
 		return Decision(allowed=allowed, risk_band=band, risk_score=score, reasons=reasons), reasons, status
-	# fallback to DB snapshot
+	
+	# Fallback to DB snapshot
 	sb = get_supabase()
-	res = sb.table("risk_scores").select("score,band").eq("wallet", (to_addr or "").lower()).limit(1).execute()
+	res = sb.table("risk_scores").select("score,band,risk_factors").eq("wallet", (to_addr or "").lower()).limit(1).execute()
 	rows = res.data or []
+	
 	if rows:
 		data = rows[0]
 		score = int(round(data.get("score") or 0))
 		band = data.get("band") or "LOW"
+		reasons = data.get("risk_factors") or []
+		
 		allowed, status, alert = _apply_policy(sanctioned, score, band)
 		if alert:
-			reasons = ["ALERT: risk_score==50"]
+			reasons = ["ALERT: risk_score==50"] + reasons
 		return Decision(allowed=allowed, risk_band=band, risk_score=score, reasons=reasons), reasons, status
-	# no cached score → treat as 0
+	
+	# No cached score → treat as 0
 	allowed, status, _ = _apply_policy(sanctioned, 0, "LOW")
 	return Decision(allowed=allowed, risk_band="LOW", risk_score=0, reasons=[]), [], status
 
 
 @app.post("/v1/check", response_model=Decision)
 async def v1_check(body: CheckRequest, partner_id: str = Depends(get_partner_id_from_api_key)):
-	decision, reasons, status = await make_decision_with_risk(body.to, body.features)
-	# log (best-effort)
 	try:
-		sb = get_supabase()
-		sb.table("relay_logs").insert({
-			"partner_id": partner_id,
-			"chain": body.chain,
-			"from_addr": body.from_addr or None,
-			"to_addr": body.to,
-			"decision": "allowed" if decision.allowed else "blocked",
-			"risk_band": decision.risk_band,
-			"risk_score": decision.risk_score,
-			"reasons": reasons or decision.reasons,
-			"created_at": now_iso(),
-		}).execute()
-	except Exception:
-		pass
-	return JSONResponse(content=decision.model_dump())
+		# Validate request body: accept 0x-prefixed 40-hex EVM address
+		if not body.to or not isinstance(body.to, str):
+			raise HTTPException(status_code=400, detail="Missing 'to' address")
+		to_norm = body.to.strip()
+		if to_norm.lower() == "string":
+			raise HTTPException(status_code=400, detail="Invalid 'to' address. Use a real 0x... address (see example in docs).")
+		if not (to_norm.startswith("0x") and len(to_norm) == 42):
+			raise HTTPException(status_code=400, detail="Invalid 'to' address format. Expected 0x-prefixed EVM address.")
+		
+		print(f"Processing check request for partner_id: {partner_id}, to: {to_norm}")
+		decision, reasons, status = await make_decision_with_risk(to_norm, body.features)
+		print(f"Decision: {decision.allowed}, risk_score: {decision.risk_score}, risk_band: {decision.risk_band}")
+		
+		# log (best-effort)
+		try:
+			sb = get_supabase()
+			sb.table("relay_logs").insert({
+				"partner_id": partner_id,
+				"chain": body.chain,
+				"from_addr": body.from_addr or None,
+				"to_addr": body.to,
+				"decision": "allowed" if decision.allowed else "blocked",
+				"risk_band": decision.risk_band,
+				"risk_score": decision.risk_score,
+				"reasons": reasons or decision.reasons,
+				"created_at": now_iso(),
+			}).execute()
+		except Exception as e:
+			print(f"Warning: Failed to log request: {e}")
+		
+		return JSONResponse(content=decision.model_dump())
+	except HTTPException:
+		raise
+	except Exception as e:
+		print(f"Error in v1_check: {e}")
+		raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 @app.post("/v1/relay", response_model=RelayResponse)
@@ -229,7 +351,22 @@ async def v1_relay(body: RelayRequest, partner_id: str = Depends(get_partner_id_
 	if to is None:
 		raise HTTPException(status_code=400, detail="Missing 'to' in rawTx (contract creation not supported)")
 
-	decision, reasons, status = await make_decision_with_risk(to, body.features)
+	# Extract transaction context for enhanced risk scoring
+	transaction_context = None
+	try:
+		# Parse raw transaction to get basic info
+		raw_bytes = Web3.to_bytes(hexstr=body.rawTx)
+		if len(raw_bytes) > 0:
+			# Basic transaction analysis
+			transaction_context = {
+				"data_size": len(raw_bytes),
+				"is_contract": len(raw_bytes) > 21000,  # More than basic ETH transfer
+				"raw_tx_length": len(body.rawTx)
+			}
+	except Exception as e:
+		print(f"Warning: Could not parse transaction context: {e}")
+	
+	decision, reasons, status = await make_decision_with_risk(to, body.features, transaction_context)
 
 	# pre-log
 	log_id: Optional[int] = None
