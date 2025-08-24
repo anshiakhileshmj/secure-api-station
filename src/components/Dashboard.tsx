@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +12,16 @@ import { Copy, Eye, EyeOff, RotateCw, Trash2, Plus, TestTube, Book } from 'lucid
 import { toast } from 'sonner';
 import ApiTester from './ApiTester';
 import ApiDocumentation from './ApiDocumentation';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface ApiKey {
   id: string;
@@ -25,20 +36,48 @@ interface ApiKey {
   rate_limit_per_minute: number;
 }
 
+interface DeveloperProfile {
+  partner_id: string;
+  company_name: string | null;
+  website: string | null;
+  api_usage_plan: string;
+  monthly_request_limit: number;
+}
+
 const Dashboard = () => {
   const { user } = useAuth();
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+  const [developerProfile, setDeveloperProfile] = useState<DeveloperProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [keyToDelete, setKeyToDelete] = useState<ApiKey | null>(null);
 
   useEffect(() => {
     if (user) {
+      fetchDeveloperProfile();
       fetchApiKeys();
     }
   }, [user]);
+
+  const fetchDeveloperProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('developer_profiles')
+        .select('partner_id, company_name, website, api_usage_plan, monthly_request_limit')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (error) throw error;
+      setDeveloperProfile(data);
+    } catch (error) {
+      console.error('Error fetching developer profile:', error);
+      toast.error('Failed to fetch developer profile');
+    }
+  };
 
   const fetchApiKeys = async () => {
     try {
@@ -73,10 +112,14 @@ const Dashboard = () => {
       return;
     }
 
+    if (!developerProfile) {
+      toast.error('Developer profile not found');
+      return;
+    }
+
     setCreating(true);
     try {
       const apiKey = generateApiKey();
-      const partnerId = user?.id || '';
 
       const { data, error } = await supabase
         .from('api_keys')
@@ -84,7 +127,7 @@ const Dashboard = () => {
           name: newKeyName.trim(),
           key: apiKey,
           key_hash: await hashApiKey(apiKey),
-          partner_id: partnerId,
+          partner_id: developerProfile.partner_id, // Use permanent partner_id from profile
           user_id: user?.id,
           is_active: true,
           rate_limit_per_minute: 60
@@ -152,41 +195,29 @@ const Dashboard = () => {
     }
   };
 
-  const revokeApiKey = async (keyId: string) => {
-    try {
-      const { error } = await supabase
-        .from('api_keys')
-        .update({ is_active: false })
-        .eq('id', keyId);
-
-      if (error) throw error;
-
-      setApiKeys(prev => prev.map(key => 
-        key.id === keyId ? { ...key, is_active: false } : key
-      ));
-      toast.success('API key revoked successfully!');
-    } catch (error) {
-      console.error('Error revoking API key:', error);
-      toast.error('Failed to revoke API key');
-    }
+  const handleDeleteClick = (apiKey: ApiKey) => {
+    setKeyToDelete(apiKey);
+    setDeleteDialogOpen(true);
   };
 
-  const reactivateApiKey = async (keyId: string) => {
+  const deleteApiKey = async () => {
+    if (!keyToDelete) return;
+
     try {
       const { error } = await supabase
         .from('api_keys')
-        .update({ is_active: true })
-        .eq('id', keyId);
+        .delete()
+        .eq('id', keyToDelete.id);
 
       if (error) throw error;
 
-      setApiKeys(prev => prev.map(key => 
-        key.id === keyId ? { ...key, is_active: true } : key
-      ));
-      toast.success('API key reactivated successfully!');
+      setApiKeys(prev => prev.filter(key => key.id !== keyToDelete.id));
+      toast.success('API key deleted successfully!');
+      setDeleteDialogOpen(false);
+      setKeyToDelete(null);
     } catch (error) {
-      console.error('Error reactivating API key:', error);
-      toast.error('Failed to reactivate API key');
+      console.error('Error deleting API key:', error);
+      toast.error('Failed to delete API key');
     }
   };
 
@@ -212,6 +243,11 @@ const Dashboard = () => {
         <div>
           <h1 className="text-3xl font-bold">Relay API Dashboard</h1>
           <p className="text-muted-foreground">Manage API keys and test your deployed relay service</p>
+          {developerProfile && (
+            <p className="text-sm text-muted-foreground mt-2">
+              Partner ID: <span className="font-mono bg-muted px-2 py-1 rounded">{developerProfile.partner_id}</span>
+            </p>
+          )}
         </div>
         <Button 
           onClick={() => setShowCreateForm(true)}
@@ -298,6 +334,25 @@ const Dashboard = () => {
                   </Button>
                 </div>
               </div>
+              {developerProfile && (
+                <div className="space-y-2">
+                  <Label>Partner ID</Label>
+                  <div className="flex items-center gap-2">
+                    <Input 
+                      value={developerProfile.partner_id} 
+                      readOnly 
+                      className="font-mono text-sm"
+                    />
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => copyToClipboard(developerProfile.partner_id, "Partner ID")}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -390,7 +445,7 @@ const Dashboard = () => {
                         <CardTitle className="flex items-center gap-2">
                           {apiKey.name}
                           <Badge variant={apiKey.is_active ? "default" : "secondary"}>
-                            {apiKey.is_active ? "Active" : "Revoked"}
+                            {apiKey.is_active ? "Active" : "Inactive"}
                           </Badge>
                         </CardTitle>
                         <CardDescription>
@@ -401,32 +456,21 @@ const Dashboard = () => {
                         </CardDescription>
                       </div>
                       <div className="flex gap-2">
-                        {apiKey.is_active ? (
-                          <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => rotateApiKey(apiKey.id, apiKey.name)}
-                            >
-                              <RotateCw className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => revokeApiKey(apiKey.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => reactivateApiKey(apiKey.id)}
-                          >
-                            Reactivate
-                          </Button>
-                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => rotateApiKey(apiKey.id, apiKey.name)}
+                        >
+                          <RotateCw className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteClick(apiKey)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   </CardHeader>
@@ -500,6 +544,31 @@ const Dashboard = () => {
           {activeApiKey && <ApiDocumentation apiKey={activeApiKey.key} />}
         </TabsContent>
       </Tabs>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete API Key</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the API key "{keyToDelete?.name}"? 
+              This action cannot be undone and will permanently remove the key from your account.
+              Any applications using this key will lose access immediately.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setKeyToDelete(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={deleteApiKey}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete API Key
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

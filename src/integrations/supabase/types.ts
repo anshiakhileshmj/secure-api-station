@@ -149,6 +149,7 @@ export type Database = {
           created_at: string | null
           id: string
           monthly_request_limit: number | null
+          partner_id: string
           updated_at: string | null
           user_id: string
           website: string | null
@@ -159,6 +160,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           monthly_request_limit?: number | null
+          partner_id: string
           updated_at?: string | null
           user_id: string
           website?: string | null
@@ -169,6 +171,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           monthly_request_limit?: number | null
+          partner_id?: string
           updated_at?: string | null
           user_id?: string
           website?: string | null
@@ -273,26 +276,38 @@ export type Database = {
       }
       risk_events: {
         Row: {
+          category: string | null
+          confidence: number | null
           created_at: string
           details: Json | null
           feature: string
           id: string
+          metadata: Json | null
+          occurred_at: string | null
           wallet: string
           weight_applied: number
         }
         Insert: {
+          category?: string | null
+          confidence?: number | null
           created_at?: string
           details?: Json | null
           feature: string
           id?: string
+          metadata?: Json | null
+          occurred_at?: string | null
           wallet: string
           weight_applied?: number
         }
         Update: {
+          category?: string | null
+          confidence?: number | null
           created_at?: string
           details?: Json | null
           feature?: string
           id?: string
+          metadata?: Json | null
+          occurred_at?: string | null
           wallet?: string
           weight_applied?: number
         }
@@ -301,18 +316,27 @@ export type Database = {
       risk_scores: {
         Row: {
           band: string
+          confidence: number | null
+          last_updated: string | null
+          metadata: Json | null
           score: number
           updated_at: string
           wallet: string
         }
         Insert: {
           band?: string
+          confidence?: number | null
+          last_updated?: string | null
+          metadata?: Json | null
           score?: number
           updated_at?: string
           wallet: string
         }
         Update: {
           band?: string
+          confidence?: number | null
+          last_updated?: string | null
+          metadata?: Json | null
           score?: number
           updated_at?: string
           wallet?: string
@@ -488,6 +512,10 @@ export type Database = {
         Returns: boolean
       }
       generate_api_key: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_partner_id: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
