@@ -1,0 +1,583 @@
+
+# SUPABASE BACKEND DATABASE OVERVIEW
+
+## COMPLETE DATABASE SCHEMA
+
+### 1. API_ENDPOINTS TABLE
+```sql
+CREATE TABLE public.api_endpoints (
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    name text NOT NULL,
+    method text NOT NULL,
+    path text NOT NULL,
+    description text NOT NULL,
+    parameters jsonb DEFAULT '{}'::jsonb,
+    response_schema jsonb DEFAULT '{}'::jsonb,
+    rate_limit integer DEFAULT 60,
+    category text NOT NULL,
+    example_request text,
+    example_response text,
+    created_at timestamp with time zone DEFAULT now()
+);
+```
+
+**RLS Policies:**
+- `Allow public read access to api endpoints` (SELECT): true
+- `Allow service role full access to api endpoints` (ALL): service_role only
+
+**Frontend Integration:**
+- Used in ApiDocumentation.tsx component to display API endpoint documentation
+- Provides structured data for API documentation pages
+
+### 2. API_KEYS TABLE
+```sql
+CREATE TABLE public.api_keys (
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    name text NOT NULL,
+    key text,
+    key_hash text NOT NULL,
+    partner_id text,
+    user_id uuid,
+    is_active boolean NOT NULL DEFAULT true,
+    active boolean DEFAULT true,
+    expires_at timestamp with time zone,
+    last_used_at timestamp with time zone,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    rate_limit_per_minute integer NOT NULL DEFAULT 60
+);
+```
+
+**RLS Policies:**
+- `Users can manage their own API keys` (ALL): auth.uid() = user_id
+
+**Frontend Integration:**
+- Core component of Dashboard.tsx for API key management
+- Used in ApiTester.tsx for testing API endpoints
+- Enables create, rotate, revoke, and reactivate API key functionality
+- Partner ID used for linking API usage to specific users
+
+### 3. API_USAGE TABLE
+```sql
+CREATE TABLE public.api_usage (
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    api_key_id uuid NOT NULL,
+    endpoint text NOT NULL,
+    ip_address text,
+    timestamp timestamp with time zone NOT NULL DEFAULT now(),
+    response_time_ms integer,
+    status_code integer
+);
+```
+
+**RLS Policies:**
+- `Users can view their own API usage` (SELECT): EXISTS check via api_keys.user_id = auth.uid()
+
+**Frontend Integration:**
+- Used for API usage analytics in Dashboard.tsx
+- Tracks API endpoint usage for rate limiting and monitoring
+
+### 4. DEVELOPER_PROFILES TABLE
+```sql
+CREATE TABLE public.developer_profiles (
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id uuid NOT NULL,
+    company_name text,
+    website text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    api_usage_plan text DEFAULT 'free'::text,
+    monthly_request_limit integer DEFAULT 1000
+);
+```
+
+**RLS Policies:**
+- `Users can manage their own developer profile` (ALL): auth.uid() = user_id
+
+**Frontend Integration:**
+- Linked to user authentication system in AuthContext.tsx
+- Auto-created via trigger when new user signs up
+- Stores developer-specific information for API management
+
+### 5. REAL_TIME_TRANSFERS TABLE
+```sql
+CREATE TABLE public.real_time_transfers (
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    hash text NOT NULL,
+    from_address text NOT NULL,
+    to_address text NOT NULL,
+    amount numeric NOT NULL,
+    currency text NOT NULL DEFAULT 'ETH'::text,
+    network text NOT NULL DEFAULT 'ethereum'::text,
+    block_number integer NOT NULL,
+    timestamp timestamp with time zone NOT NULL,
+    usd_value numeric NOT NULL DEFAULT 0,
+    is_whale boolean NOT NULL DEFAULT false,
+    gas_price numeric,
+    gas_used numeric,
+    created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+**RLS Policies:**
+- `Allow public read access to real_time_transfers` (SELECT): true
+- `Allow service role full access to real_time_transfers` (ALL): service_role only
+
+**Frontend Integration:**
+- Used for displaying real-time blockchain transaction data
+- Can be integrated into monitoring dashboards
+
+### 6. RELAY_LOGS TABLE
+```sql
+CREATE TABLE public.relay_logs (
+    id integer NOT NULL DEFAULT nextval('relay_logs_id_seq'::regclass) PRIMARY KEY,
+    partner_id text,
+    chain text NOT NULL,
+    from_addr text,
+    to_addr text NOT NULL,
+    risk_score integer NOT NULL DEFAULT 0,
+    risk_band text NOT NULL,
+    decision text NOT NULL,
+    reasons text[] DEFAULT '{}'::text[],
+    tx_hash text,
+    idempotency_key text,
+    created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+**RLS Policies:**
+- `Allow service role full access to relay logs` (ALL): service_role only
+- `Users can view their own relay logs` (SELECT): partner_id matches user's api_keys
+
+**Frontend Integration:**
+- Logs from relay API calls made through the system
+- Used for transaction monitoring and compliance tracking
+- Connected to API keys via partner_id for user-specific access
+
+### 7. RISK_EVENTS TABLE
+```sql
+CREATE TABLE public.risk_events (
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    wallet text NOT NULL,
+    feature text NOT NULL,
+    category character varying DEFAULT 'BEHAVIORAL',
+    details jsonb DEFAULT '{}'::jsonb,
+    weight_applied integer NOT NULL DEFAULT 0,
+    confidence numeric DEFAULT 1.0,
+    metadata jsonb,
+    occurred_at timestamp with time zone DEFAULT now(),
+    timestamp timestamp with time zone NOT NULL DEFAULT now(),
+    created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+**RLS Policies:**
+- `Allow service role full access to risk events` (ALL): service_role only
+
+**Frontend Integration:**
+- Backend data for risk assessment in relay API
+- Used by Python backend for AML compliance checking
+
+### 8. RISK_SCORES TABLE
+```sql
+CREATE TABLE public.risk_scores (
+    wallet text NOT NULL,
+    score integer NOT NULL DEFAULT 0,
+    band text NOT NULL DEFAULT 'LOW'::text,
+    confidence numeric DEFAULT 1.0,
+    metadata jsonb,
+    last_updated timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone NOT NULL DEFAULT now(),
+    id bigint DEFAULT nextval() -- Added by migration
+    risk_factors jsonb DEFAULT '[]'::jsonb, -- Added by migration
+    created_at timestamp with time zone DEFAULT now() -- Added by migration
+);
+```
+
+**RLS Policies:**
+- `Allow public read access to risk scores` (SELECT): true
+- `Allow service role full access to risk scores` (ALL): service_role only
+
+**Frontend Integration:**
+- Core component of AML/sanctions checking system
+- Used by relay API for transaction risk assessment
+- Can be displayed in compliance dashboards
+
+### 9. SANCTIONED_WALLETS TABLE
+```sql
+CREATE TABLE public.sanctioned_wallets (
+    address text NOT NULL PRIMARY KEY,
+    source text NOT NULL DEFAULT 'OFAC'::text,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+**RLS Policies:**
+- `Allow public read access to sanctioned wallets` (SELECT): true
+- `Allow service role full access to sanctioned wallets` (ALL): service_role only
+
+**Frontend Integration:**
+- Critical for AML compliance in ApiTester.tsx
+- Used by relay API Python backend for sanctions screening
+- Test addresses provided in ApiTester for demonstration
+
+### 10. STABLECOIN_TRANSFERS TABLE
+```sql
+CREATE TABLE public.stablecoin_transfers (
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    sender_address text NOT NULL,
+    receiver_address text NOT NULL,
+    token_symbol text NOT NULL,
+    token_name text NOT NULL,
+    amount numeric NOT NULL,
+    network text NOT NULL DEFAULT 'ethereum'::text,
+    block_time timestamp with time zone NOT NULL,
+    created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+**RLS Policies:**
+- `Allow public read access to stablecoin transfers` (SELECT): true
+- `Allow service role full access to stablecoin transfers` (ALL): service_role only
+
+**Frontend Integration:**
+- Data source for stablecoin transaction monitoring
+- Can be used in analytics dashboards
+
+### 11. TRACKED_WALLETS TABLE
+```sql
+CREATE TABLE public.tracked_wallets (
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    address text NOT NULL,
+    name text,
+    network text NOT NULL DEFAULT 'eth'::text,
+    created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+**RLS Policies:**
+- `Allow public read access to tracked wallets` (SELECT): true
+- `Allow public insert access to tracked wallets` (INSERT): true
+- `Allow public update access to tracked wallets` (UPDATE): true  
+- `Allow public delete access to tracked wallets` (DELETE): true
+
+**Frontend Integration:**
+- User-managed wallet tracking functionality
+- Can be integrated into portfolio/monitoring features
+
+### 12. WALLET_RISK_RATINGS TABLE
+```sql
+CREATE TABLE public.wallet_risk_ratings (
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    wallet_address text NOT NULL,
+    risk_score integer,
+    risk_level text,
+    total_transactions integer NOT NULL DEFAULT 0,
+    failed_transactions integer NOT NULL DEFAULT 0,
+    failed_tx_ratio numeric,
+    wallet_age_days integer,
+    first_tx_date timestamp with time zone,
+    network text DEFAULT 'ethereum'::text,
+    last_updated timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+**RLS Policies:**
+- `Allow public read access to wallet risk ratings` (SELECT): true
+- `Allow service role full access to wallet risk ratings` (ALL): service_role only
+
+**Frontend Integration:**
+- Enhanced wallet risk analysis data
+- Used for detailed risk profiling in compliance systems
+
+### 13. WALLET_TRANSACTIONS TABLE
+```sql
+CREATE TABLE public.wallet_transactions (
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    wallet_address text NOT NULL,
+    tx_hash text NOT NULL,
+    from_address text NOT NULL,
+    to_address text NOT NULL,
+    value_eth numeric NOT NULL,
+    timestamp timestamp with time zone NOT NULL,
+    is_error boolean NOT NULL DEFAULT false,
+    created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+**RLS Policies:**
+- `Allow public read access to wallet transactions` (SELECT): true
+- `Allow service role full access to wallet transactions` (ALL): service_role only
+
+**Frontend Integration:**
+- Transaction history data for wallet analysis
+- Used for transaction pattern detection and risk assessment
+
+### 14. TRANSACTION_PATTERNS TABLE (Added by migration)
+```sql
+CREATE TABLE public.transaction_patterns (
+    id BIGSERIAL PRIMARY KEY,
+    wallet TEXT NOT NULL,
+    pattern_type TEXT NOT NULL,
+    pattern_data JSONB NOT NULL,
+    confidence DECIMAL(3,2) DEFAULT 0.80,
+    detected_at TIMESTAMPTZ DEFAULT NOW(),
+    is_active BOOLEAN DEFAULT true
+);
+```
+
+**RLS Policies:**
+- `Allow service role full access to transaction patterns` (ALL): service_role only
+
+### 15. NETWORK_ASSOCIATIONS TABLE (Added by migration)
+```sql
+CREATE TABLE public.network_associations (
+    id BIGSERIAL PRIMARY KEY,
+    wallet TEXT NOT NULL,
+    associated_wallet TEXT NOT NULL,
+    association_type TEXT NOT NULL,
+    strength DECIMAL(3,2) DEFAULT 1.00,
+    first_seen TIMESTAMPTZ DEFAULT NOW(),
+    last_seen TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(wallet, associated_wallet)
+);
+```
+
+**RLS Policies:**
+- `Allow service role full access to network associations` (ALL): service_role only
+
+### 16. RISK_INDICATORS TABLE (Added by migration)
+```sql
+CREATE TABLE public.risk_indicators (
+    id BIGSERIAL PRIMARY KEY,
+    indicator_key TEXT NOT NULL UNIQUE,
+    category TEXT NOT NULL,
+    base_weight DECIMAL(5,2) NOT NULL,
+    half_life_days INTEGER NOT NULL DEFAULT 30,
+    is_critical BOOLEAN DEFAULT false,
+    description TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+**RLS Policies:**
+- `Allow public read access to risk indicators` (SELECT): true
+- `Allow service role full access to risk indicators` (ALL): service_role only
+
+## DATABASE FUNCTIONS
+
+### 1. hash_api_key(api_key text) -> text
+```sql
+CREATE OR REPLACE FUNCTION public.hash_api_key(api_key text)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+BEGIN
+  RETURN encode(sha256(api_key::bytea), 'hex');
+END;
+$function$
+```
+
+### 2. handle_new_user() -> trigger
+```sql
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+BEGIN
+  INSERT INTO public.developer_profiles (user_id, company_name, website, api_usage_plan, monthly_request_limit)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data ->> 'company_name', ''),
+    COALESCE(NEW.raw_user_meta_data ->> 'website', ''),
+    'free',
+    1000
+  );
+  RETURN NEW;
+END;
+$function$
+```
+
+### 3. check_api_rate_limit(api_key_hash text, endpoint text) -> boolean
+```sql
+CREATE OR REPLACE FUNCTION public.check_api_rate_limit(api_key_hash text, endpoint text)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $function$
+DECLARE
+  key_record RECORD;
+  usage_count INTEGER;
+  rate_limit INTEGER;
+BEGIN
+  -- Get API key details
+  SELECT * INTO key_record 
+  FROM api_keys 
+  WHERE key_hash = api_key_hash AND is_active = true 
+    AND (expires_at IS NULL OR expires_at > now());
+  
+  IF NOT FOUND THEN
+    RETURN false;
+  END IF;
+  
+  -- Get rate limit for this key
+  rate_limit := key_record.rate_limit_per_minute;
+  
+  -- Count usage in the last minute
+  SELECT COUNT(*) INTO usage_count
+  FROM api_usage
+  WHERE api_key_id = key_record.id 
+    AND endpoint = check_api_rate_limit.endpoint
+    AND timestamp > now() - interval '1 minute';
+  
+  -- Update last_used_at
+  UPDATE api_keys 
+  SET last_used_at = now() 
+  WHERE id = key_record.id;
+  
+  RETURN usage_count < rate_limit;
+END;
+$function$
+```
+
+### 4. log_api_usage() -> void
+```sql
+CREATE OR REPLACE FUNCTION public.log_api_usage(api_key_hash text, endpoint_path text, ip_addr text, status_code integer, response_time_ms integer)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $function$
+DECLARE
+  key_id uuid;
+BEGIN
+  -- Get API key ID
+  SELECT id INTO key_id 
+  FROM api_keys 
+  WHERE key_hash = api_key_hash;
+  
+  IF FOUND THEN
+    INSERT INTO api_usage (api_key_id, endpoint, ip_address, status_code, response_time_ms)
+    VALUES (key_id, endpoint_path, ip_addr, status_code, response_time_ms);
+  END IF;
+END;
+$function$
+```
+
+### 5. generate_api_key() -> text
+```sql
+CREATE OR REPLACE FUNCTION public.generate_api_key()
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+DECLARE
+  key_prefix TEXT := 'wm_';
+  random_part TEXT;
+  full_key TEXT;
+BEGIN
+  -- Generate random 32 character string using extensions/pgcrypto gen_random_uuid
+  random_part := replace(gen_random_uuid()::text, '-', '');
+  -- Add more randomness by concatenating another UUID
+  random_part := random_part || replace(gen_random_uuid()::text, '-', '');
+  -- Take first 32 characters and make it uppercase for better readability
+  random_part := upper(substring(random_part, 1, 32));
+  full_key := key_prefix || random_part;
+  RETURN full_key;
+END;
+$function$
+```
+
+### 6. update_risk_score() -> void (Enhanced by migration)
+```sql
+CREATE OR REPLACE FUNCTION update_risk_score(
+    p_wallet TEXT,
+    p_score INTEGER,
+    p_band TEXT,
+    p_confidence DECIMAL DEFAULT 0.80,
+    p_risk_factors JSONB DEFAULT '[]'::jsonb
+) RETURNS VOID AS $$
+BEGIN
+    INSERT INTO risk_scores (wallet, score, band, confidence, risk_factors, updated_at, created_at)
+    VALUES (p_wallet, p_score, p_band, p_confidence, p_risk_factors, NOW(), NOW())
+    ON CONFLICT (wallet) DO UPDATE SET
+        score = EXCLUDED.score,
+        band = EXCLUDED.band,
+        confidence = EXCLUDED.confidence,
+        risk_factors = EXCLUDED.risk_factors,
+        updated_at = NOW();
+END;
+$$ LANGUAGE plpgsql;
+```
+
+### 7. log_risk_event() -> void (Enhanced by migration)
+```sql
+CREATE OR REPLACE FUNCTION log_risk_event(
+    p_wallet TEXT,
+    p_feature TEXT,
+    p_category TEXT DEFAULT 'BEHAVIORAL',
+    p_details JSONB DEFAULT '{}'::jsonb,
+    p_weight_applied INTEGER DEFAULT 0
+) RETURNS VOID AS $$
+BEGIN
+    INSERT INTO risk_events (wallet, feature, category, details, weight_applied, timestamp, created_at)
+    VALUES (p_wallet, p_feature, p_category, p_details, p_weight_applied, NOW(), NOW());
+END;
+$$ LANGUAGE plpgsql;
+```
+
+## VIEWS
+
+### wallet_risk_summary (Added by migration)
+```sql
+CREATE OR REPLACE VIEW wallet_risk_summary AS
+SELECT 
+    rs.wallet,
+    rs.score,
+    rs.band,
+    rs.confidence,
+    rs.risk_factors,
+    rs.updated_at as last_updated,
+    rs.created_at,
+    COUNT(re.id) as event_count,
+    COUNT(DISTINCT re.feature) as unique_features,
+    COUNT(DISTINCT re.category) as risk_categories,
+    COUNT(tp.id) as pattern_count,
+    COUNT(na.id) as association_count
+FROM risk_scores rs
+LEFT JOIN risk_events re ON rs.wallet = re.wallet
+LEFT JOIN transaction_patterns tp ON rs.wallet = tp.wallet AND tp.is_active = true
+LEFT JOIN network_associations na ON rs.wallet = na.wallet
+GROUP BY rs.wallet, rs.score, rs.band, rs.confidence, rs.risk_factors, rs.updated_at, rs.created_at;
+```
+
+## FRONTEND INTEGRATION SUMMARY
+
+**Dashboard.tsx (507 lines):**
+- Primary interface for API key management (api_keys table)
+- Uses developer_profiles for user information
+- Integrates with api_usage for analytics
+- Manages API key lifecycle (create, rotate, revoke, reactivate)
+
+**ApiTester.tsx (312 lines):**
+- Tests relay API endpoints using api_keys
+- Uses sanctioned_wallets for test scenarios
+- Demonstrates AML compliance checking
+- Integrates with relay_logs for transaction logging
+
+**AuthContext.tsx:**
+- Manages user authentication
+- Triggers developer_profiles creation via database trigger
+- Provides auth.uid() for RLS policies
+
+**Relay API Python Backend:**
+- Uses sanctioned_wallets, risk_scores, risk_events
+- Implements AML compliance checking
+- Logs to relay_logs table
+- Uses enhanced risk scoring system with new tables

@@ -1,0 +1,458 @@
+
+# API MANAGEMENT SYSTEM - DATABASE DOCUMENTATION
+
+## API-RELATED TABLES AND FUNCTIONALITY
+
+### 1. API_KEYS TABLE - CORE API MANAGEMENT
+```sql
+CREATE TABLE public.api_keys (
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    name text NOT NULL,                    -- User-friendly name for the API key
+    key text,                             -- The actual API key (wm_XXXXXXXX format)
+    key_hash text NOT NULL,               -- SHA-256 hash of the key for security
+    partner_id text,                      -- Links to user identity for API calls
+    user_id uuid,                         -- References auth.users for ownership
+    is_active boolean NOT NULL DEFAULT true,  -- Enable/disable key
+    active boolean DEFAULT true,          -- Legacy active field
+    expires_at timestamp with time zone, -- Optional expiration date
+    last_used_at timestamp with time zone, -- Track key usage
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    rate_limit_per_minute integer NOT NULL DEFAULT 60  -- Rate limiting
+);
+```
+
+**RLS Policy:**
+```sql
+-- Users can only manage their own API keys
+CREATE POLICY "Users can manage their own API keys" 
+ON api_keys FOR ALL 
+USING (auth.uid() = user_id);
+```
+
+**Frontend Integration (Dashboard.tsx):**
+- **Line 47-57:** Interface definition for ApiKey type
+- **Line 89-100:** Fetch user's API keys with `fetchApiKeys()`
+- **Line 108-120:** Generate new API keys with crypto.getRandomValues()
+- **Line 122-150:** Create API key with `createApiKey()`
+- **Line 167-185:** Rotate API keys with `rotateApiKey()`
+- **Line 187-202:** Revoke API keys with `revokeApiKey()`
+- **Line 204-219:** Reactivate API keys with `reactivateApiKey()`
+- **Line 300-400:** UI for displaying, copying, and managing API keys
+
+### 2. API_USAGE TABLE - TRACKING AND ANALYTICS
+```sql
+CREATE TABLE public.api_usage (
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    api_key_id uuid NOT NULL,             -- Links to specific API key
+    endpoint text NOT NULL,               -- Which endpoint was called
+    ip_address text,                      -- Client IP for security
+    timestamp timestamp with time zone NOT NULL DEFAULT now(),
+    response_time_ms integer,             -- Performance tracking
+    status_code integer                   -- HTTP response status
+);
+```
+
+**RLS Policy:**
+```sql
+-- Users can only view usage for their own API keys
+CREATE POLICY "Users can view their own API usage" 
+ON api_usage FOR SELECT 
+USING (EXISTS (
+  SELECT 1 FROM api_keys 
+  WHERE api_keys.id = api_usage.api_key_id 
+    AND api_keys.user_id = auth.uid()
+));
+```
+
+**Frontend Integration (Dashboard.tsx):**
+- Used for API analytics and monitoring (not directly displayed in current UI)
+- Can be extended for usage charts and billing information
+
+### 3. API_ENDPOINTS TABLE - DOCUMENTATION SYSTEM
+```sql
+CREATE TABLE public.api_endpoints (
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    name text NOT NULL,                   -- Display name for endpoint
+    method text NOT NULL,                 -- HTTP method (GET, POST, etc.)
+    path text NOT NULL,                   -- API path (/v1/check, /v1/relay)
+    description text NOT NULL,            -- Human-readable description
+    parameters jsonb DEFAULT '{}'::jsonb, -- Parameter specifications
+    response_schema jsonb DEFAULT '{}'::jsonb, -- Response format
+    rate_limit integer DEFAULT 60,       -- Per-minute rate limit
+    category text NOT NULL,               -- Grouping category
+    example_request text,                 -- Sample request
+    example_response text,                -- Sample response
+    created_at timestamp with time zone DEFAULT now()
+);
+```
+
+**RLS Policies:**
+```sql
+-- Public read access for documentation
+CREATE POLICY "Allow public read access to api endpoints" 
+ON api_endpoints FOR SELECT USING (true);
+
+-- Service role can manage endpoints
+CREATE POLICY "Allow service role full access to api endpoints" 
+ON api_endpoints FOR ALL 
+USING ((auth.jwt() ->> 'role'::text) = 'service_role'::text);
+```
+
+**Frontend Integration (ApiDocumentation.tsx):**
+- Provides structured API documentation
+- Used in Dashboard.tsx "Documentation" tab
+
+### 4. SANCTIONED_WALLETS TABLE - AML COMPLIANCE
+```sql
+CREATE TABLE public.sanctioned_wallets (
+    address text NOT NULL PRIMARY KEY,    -- Wallet address (lowercase)
+    source text NOT NULL DEFAULT 'OFAC'::text, -- Sanctions source
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+**RLS Policies:**
+```sql
+-- Public read for AML checks
+CREATE POLICY "Allow public read access to sanctioned wallets" 
+ON sanctioned_wallets FOR SELECT USING (true);
+
+-- Service role full access for data management
+CREATE POLICY "Allow service role full access to sanctioned wallets" 
+ON sanctioned_wallets FOR ALL 
+USING ((auth.jwt() ->> 'role'::text) = 'service_role'::text);
+```
+
+**Frontend Integration (ApiTester.tsx):**
+- **Line 15-19:** Test sanctioned addresses for API testing
+- **Line 21:** Clean test address for comparison
+- **Line 130-140:** Uses sanctioned addresses in dropdown selection
+- **Line 150-155:** Displays warning badge for sanctioned addresses
+
+**Python Backend Integration (relay-api/app/sanctions.py):**
+```python
+async def is_sanctioned(self, address: str) -> bool:
+    addr = (address or "").lower()
+    sb = get_supabase()
+    res = sb.table("sanctioned_wallets").select("address").eq("address", addr).limit(1).execute()
+    rows = res.data or []
+    return bool(rows)
+```
+
+### 5. DEVELOPER_PROFILES TABLE - USER MANAGEMENT
+```sql
+CREATE TABLE public.developer_profiles (
+    id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id uuid NOT NULL,               -- Links to auth.users
+    company_name text,                   -- Developer's company
+    website text,                        -- Developer's website
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    api_usage_plan text DEFAULT 'free'::text, -- Subscription plan
+    monthly_request_limit integer DEFAULT 1000 -- Rate limiting
+);
+```
+
+**RLS Policy:**
+```sql
+-- Users manage their own profiles
+CREATE POLICY "Users can manage their own developer profile" 
+ON developer_profiles FOR ALL 
+USING (auth.uid() = user_id);
+```
+
+**Auto-Creation Trigger:**
+```sql
+-- Automatically create profile when user signs up
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.developer_profiles (user_id, company_name, website, api_usage_plan, monthly_request_limit)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data ->> 'company_name', ''),
+    COALESCE(NEW.raw_user_meta_data ->> 'website', ''),
+    'free',
+    1000
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+```
+
+**Frontend Integration:**
+- Used by AuthContext.tsx for user profile data
+- Dashboard.tsx shows API usage limits and plan information
+
+### 6. RELAY_LOGS TABLE - TRANSACTION LOGGING
+```sql
+CREATE TABLE public.relay_logs (
+    id integer NOT NULL DEFAULT nextval('relay_logs_id_seq'::regclass) PRIMARY KEY,
+    partner_id text,                     -- Links to api_keys.partner_id
+    chain text NOT NULL,                 -- Blockchain network
+    from_addr text,                      -- Transaction sender
+    to_addr text NOT NULL,               -- Transaction recipient
+    risk_score integer NOT NULL DEFAULT 0, -- Calculated risk score
+    risk_band text NOT NULL,             -- Risk category (LOW, HIGH, etc.)
+    decision text NOT NULL,              -- ALLOW or BLOCK
+    reasons text[] DEFAULT '{}'::text[], -- Why transaction was blocked/allowed
+    tx_hash text,                        -- Blockchain transaction hash
+    idempotency_key text,                -- Prevent duplicate transactions
+    created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+**RLS Policies:**
+```sql
+-- Service role full access
+CREATE POLICY "Allow service role full access to relay logs" 
+ON relay_logs FOR ALL 
+USING ((auth.jwt() ->> 'role'::text) = 'service_role'::text);
+
+-- Users can view logs for their API keys
+CREATE POLICY "Users can view their own relay logs" 
+ON relay_logs FOR SELECT 
+USING (EXISTS (
+  SELECT 1 FROM api_keys 
+  WHERE api_keys.partner_id = relay_logs.partner_id 
+    AND api_keys.user_id = auth.uid()
+));
+```
+
+**Frontend Integration:**
+- Can be used for transaction history in Dashboard.tsx
+- ApiTester.tsx generates test transactions that create relay logs
+
+## API KEY MANAGEMENT FUNCTIONS
+
+### 1. API Key Generation
+```sql
+CREATE OR REPLACE FUNCTION public.generate_api_key()
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  key_prefix TEXT := 'wm_';
+  random_part TEXT;
+  full_key TEXT;
+BEGIN
+  -- Generate 32-character random string
+  random_part := replace(gen_random_uuid()::text, '-', '');
+  random_part := random_part || replace(gen_random_uuid()::text, '-', '');
+  random_part := upper(substring(random_part, 1, 32));
+  full_key := key_prefix || random_part;
+  RETURN full_key;
+END;
+$$;
+```
+
+**Frontend Usage (Dashboard.tsx Line 108-120):**
+```typescript
+const generateApiKey = () => {
+  const prefix = 'wm_';
+  const randomPart = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+    .toUpperCase();
+  return prefix + randomPart;
+};
+```
+
+### 2. API Key Hashing
+```sql
+CREATE OR REPLACE FUNCTION public.hash_api_key(api_key text)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  RETURN encode(sha256(api_key::bytea), 'hex');
+END;
+$$;
+```
+
+**Frontend Usage (Dashboard.tsx Line 152-158):**
+```typescript
+const hashApiKey = async (key: string) => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(key);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+};
+```
+
+### 3. Rate Limit Checking
+```sql
+CREATE OR REPLACE FUNCTION public.check_api_rate_limit(api_key_hash text, endpoint text)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  key_record RECORD;
+  usage_count INTEGER;
+  rate_limit INTEGER;
+BEGIN
+  -- Get API key details
+  SELECT * INTO key_record 
+  FROM api_keys 
+  WHERE key_hash = api_key_hash AND is_active = true 
+    AND (expires_at IS NULL OR expires_at > now());
+  
+  IF NOT FOUND THEN
+    RETURN false;
+  END IF;
+  
+  rate_limit := key_record.rate_limit_per_minute;
+  
+  -- Count usage in last minute
+  SELECT COUNT(*) INTO usage_count
+  FROM api_usage
+  WHERE api_key_id = key_record.id 
+    AND endpoint = check_api_rate_limit.endpoint
+    AND timestamp > now() - interval '1 minute';
+  
+  -- Update last_used_at
+  UPDATE api_keys 
+  SET last_used_at = now() 
+  WHERE id = key_record.id;
+  
+  RETURN usage_count < rate_limit;
+END;
+$$;
+```
+
+### 4. Usage Logging
+```sql
+CREATE OR REPLACE FUNCTION public.log_api_usage(
+  api_key_hash text, 
+  endpoint_path text, 
+  ip_addr text, 
+  status_code integer, 
+  response_time_ms integer
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  key_id uuid;
+BEGIN
+  SELECT id INTO key_id 
+  FROM api_keys 
+  WHERE key_hash = api_key_hash;
+  
+  IF FOUND THEN
+    INSERT INTO api_usage (api_key_id, endpoint, ip_address, status_code, response_time_ms)
+    VALUES (key_id, endpoint_path, ip_addr, status_code, response_time_ms);
+  END IF;
+END;
+$$;
+```
+
+## API TESTING SYSTEM
+
+### Frontend API Testing (ApiTester.tsx)
+
+**Test Endpoints:**
+- **Line 42-90:** `/v1/check` endpoint testing
+- **Line 92-130:** `/v1/relay` endpoint testing
+
+**Test Data Management:**
+```typescript
+// Sanctioned test addresses
+const SANCTIONED_TEST_ADDRESSES = [
+  '0x4f47bc496083c727c5fbe3ce9cdf2b0f6496270c',
+  '0x983a81ca6FB1e441266D2FbcB7D8E530AC2E05A2', 
+  '0xb6f5ec1a0a9cd1526536d3f0426c429529471f40'
+];
+
+// Clean test address
+const CLEAN_TEST_ADDRESS = '0x742d35Cc6645C0532979A1f8A4D5fB2C61a8BaF6';
+```
+
+**API Request Structure (Line 50-70):**
+```typescript
+const response = await fetch('https://resumeak.onrender.com/v1/check', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${apiKey}`,
+  },
+  body: JSON.stringify({
+    chain: 'ethereum',
+    to: toAddress,
+    from: '0x742d35Cc6645C0532979A1f8A4D5fB2C61a8BaF6',
+    value: '1000000000000000000',
+    asset: 'ETH'
+  }),
+});
+```
+
+## PARTNER ID SYSTEM
+
+The `partner_id` field in `api_keys` table serves as the primary link between:
+
+1. **Frontend API Keys** - Each key has a `partner_id` (usually = `user_id`)
+2. **Relay API Calls** - Python backend uses `partner_id` from API key
+3. **Transaction Logs** - `relay_logs.partner_id` links back to user
+
+**Flow:**
+1. User creates API key in Dashboard.tsx → `partner_id` set to `user.id`
+2. User makes API call with key → Python backend extracts `partner_id`
+3. Transaction processed → Logged to `relay_logs` with `partner_id`
+4. User views logs → RLS policy filters by `partner_id` matching their keys
+
+## ENDPOINTS OVERVIEW
+
+### Current API Endpoints:
+1. **POST /v1/check** - Pre-flight AML check without execution
+2. **POST /v1/relay** - Execute transaction through AML-compliant relay
+3. **GET /docs** - API documentation (FastAPI auto-generated)
+
+### Base URL: https://resumeak.onrender.com
+
+**Frontend Integration (Dashboard.tsx Line 250-290):**
+- Shows deployed API information
+- Provides copy-paste functionality for endpoints
+- Links to interactive documentation
+
+## COPY/PASTE FUNCTIONALITY
+
+**Dashboard.tsx Implementation (Line 160-165):**
+```typescript
+const copyToClipboard = (text: string, label: string) => {
+  navigator.clipboard.writeText(text);
+  toast.success(`${label} copied to clipboard!`);
+};
+```
+
+**Used for copying:**
+- API keys (with visibility toggle)
+- Partner IDs
+- Base URLs
+- Endpoint paths
+
+## SECURITY FEATURES
+
+1. **API Key Hashing** - Keys stored as SHA-256 hashes
+2. **Row Level Security** - Users only see their own data
+3. **Rate Limiting** - 60 requests/minute per key (configurable)
+4. **Key Rotation** - Generate new key, invalidate old one
+5. **Key Revocation** - Disable without deletion
+6. **Expiration Dates** - Optional key expiry
+7. **Usage Tracking** - Log all API calls for audit
+
+## COMPLIANCE INTEGRATION
+
+The API system is tightly integrated with AML compliance:
+
+1. **Sanctions Screening** - `sanctioned_wallets` table
+2. **Risk Scoring** - `risk_scores` and `risk_events` tables  
+3. **Transaction Logging** - `relay_logs` for audit trail
+4. **Decision Tracking** - Allow/block decisions with reasons
+
+This creates a complete audit trail from API key creation to transaction execution and compliance decisions.
