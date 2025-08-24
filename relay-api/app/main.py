@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from web3 import Web3
 
 from .supabase_client import get_supabase
-from .sanctions import SanctionsChecker
+from .local_sanctions import local_sanctions_checker
 from .tx_decode import extract_to_address, is_hex_string
 from .utils import Decision, decision_from, now_iso
 from .risk_model import FeatureHit, compute_risk_score, log_risk_events, upsert_risk_score
@@ -90,6 +90,28 @@ class RelayResponse(BaseModel):
 	txHash: Optional[str] = None
 	reasons: Optional[List[str]] = None
 	status: Optional[str] = None
+
+
+class SanctionedWalletRequest(BaseModel):
+	address: str = Field(..., description="Wallet address to add/remove from sanctions list")
+	action: str = Field(..., description="Action: 'add' or 'remove'")
+
+	model_config = ConfigDict(
+		json_schema_extra={
+			"example": {
+				"address": "0x1234567890123456789012345678901234567890",
+				"action": "add"
+			}
+		}
+	)
+
+
+class SanctionedWalletResponse(BaseModel):
+	success: bool
+	message: str
+	address: str
+	action: str
+	total_count: int
 
 
 app = FastAPI(
@@ -192,7 +214,7 @@ def get_w3(chain: str) -> Web3:
 	return w3_clients[key]
 
 
-sanctions_checker = SanctionsChecker()
+sanctions_checker = local_sanctions_checker
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -235,7 +257,9 @@ def get_partner_id_from_api_key(authorization: Optional[str] = Header(default=No
 
 @app.on_event("startup")
 async def startup_event() -> None:
-	await sanctions_checker.load_initial()
+	# Local sanctions checker loads automatically on first use
+	# No async initialization needed
+	pass
 
 
 def _apply_policy(sanctioned: bool, score: int, band: str) -> Tuple[bool, Optional[str], bool]:
@@ -265,7 +289,7 @@ async def make_decision_with_risk(to_addr: str, features: Optional[List[FeatureH
 	Returns (Decision, reasons, status)
 	"""
 	reasons: List[str] = []
-	sanctioned = await sanctions_checker.is_sanctioned(to_addr)
+	sanctioned = sanctions_checker.is_sanctioned(to_addr)  # Now synchronous since it's local
 	
 	if features:
 		# Convert features to domain objects
@@ -291,6 +315,48 @@ async def make_decision_with_risk(to_addr: str, features: Optional[List[FeatureH
 			reasons = ["ALERT: risk_score==50"] + reasons
 		return Decision(allowed=allowed, risk_band=band, risk_score=score, reasons=reasons), reasons, status
 	
+	# No features provided - calculate base risk from transaction context only
+	if transaction_context:
+		# Create a minimal feature hit based on transaction context
+		from datetime import datetime, timezone
+		from .risk_model import FeatureHit
+		
+		# Calculate base risk from transaction context
+		base_risk = 0
+		context_reasons = []
+		
+		if transaction_context.get('is_contract', False):
+			base_risk += 15
+			context_reasons.append("Contract interaction")
+		
+		if transaction_context.get('data_size', 0) > 21000:
+			base_risk += 10
+			context_reasons.append("Complex transaction")
+		
+		# Create a feature hit for the transaction context
+		context_hit = FeatureHit(
+			key="TRANSACTION_CONTEXT",
+			base=float(base_risk),
+			occurred_at=datetime.now(timezone.utc),
+			critical=False,
+			details=transaction_context
+		)
+		
+		# Use the risk model with this context
+		score, band, reasons, applied = compute_risk_score(
+			[context_hit], 
+			sanctioned,
+			transaction_context=transaction_context,
+			network_context=network_context
+		)
+		
+		# Add context reasons
+		if context_reasons:
+			reasons = context_reasons + reasons
+		
+		allowed, status, alert = _apply_policy(sanctioned, score, band)
+		return Decision(allowed=allowed, risk_band=band, risk_score=score, reasons=reasons), reasons, status
+	
 	# Fallback to DB snapshot
 	sb = get_supabase()
 	res = sb.table("risk_scores").select("score,band,risk_factors").eq("wallet", (to_addr or "").lower()).limit(1).execute()
@@ -307,9 +373,9 @@ async def make_decision_with_risk(to_addr: str, features: Optional[List[FeatureH
 			reasons = ["ALERT: risk_score==50"] + reasons
 		return Decision(allowed=allowed, risk_band=band, risk_score=score, reasons=reasons), reasons, status
 	
-	# No cached score → treat as 0
+	# No cached score and no context → treat as 0
 	allowed, status, _ = _apply_policy(sanctioned, 0, "LOW")
-	return Decision(allowed=allowed, risk_band="LOW", risk_score=0, reasons=[]), [], status
+	return Decision(allowed=allowed, risk_band="LOW", risk_score=0, reasons=["No risk factors detected"]), [], status
 
 
 @app.post("/v1/check", response_model=Decision)
@@ -327,6 +393,13 @@ async def v1_check(body: CheckRequest, partner_id: str = Depends(get_partner_id_
 		print(f"Processing check request for partner_id: {partner_id}, to: {to_norm}")
 		decision, reasons, status = await make_decision_with_risk(to_norm, body.features)
 		print(f"Decision: {decision.allowed}, risk_score: {decision.risk_score}, risk_band: {decision.risk_band}")
+		
+		# Log sanctions check result
+		is_sanctioned = sanctions_checker.is_sanctioned(to_norm)
+		if is_sanctioned:
+			print(f"🚫 SANCTIONED WALLET DETECTED in check: {to_norm}")
+		else:
+			print(f"✅ Wallet {to_norm} is clean in check")
 		
 		# log (best-effort)
 		try:
@@ -376,6 +449,14 @@ async def v1_relay(body: RelayRequest, partner_id: str = Depends(get_partner_id_
 			}
 	except Exception as e:
 		print(f"Warning: Could not parse transaction context: {e}")
+	
+	# Check sanctions first and log clearly
+	is_sanctioned = sanctions_checker.is_sanctioned(to)
+	if is_sanctioned:
+		print(f"🚫 SANCTIONED WALLET DETECTED in relay: {to}")
+		print(f"   Transaction will be BLOCKED from broadcasting")
+	else:
+		print(f"✅ Wallet {to} is clean in relay - proceeding with risk assessment")
 	
 	decision, reasons, status = await make_decision_with_risk(to, body.features, transaction_context)
 
@@ -448,28 +529,201 @@ async def v1_relay(body: RelayRequest, partner_id: str = Depends(get_partner_id_
 	except Exception as e:
 		print(f"Error broadcasting transaction: {e}")
 		print(f"Error type: {type(e)}")
-		print(f"Error args: {e.args}")
 		
-		# Check if it's a specific RPC error
-		if hasattr(e, 'args') and len(e.args) > 0:
-			error_msg = str(e.args[0])
-			if "insufficient funds" in error_msg.lower():
-				raise HTTPException(status_code=400, detail="Insufficient funds for transaction")
-			elif "nonce too low" in error_msg.lower():
-				raise HTTPException(status_code=400, detail="Nonce too low - transaction may already be mined")
-			elif "already known" in error_msg.lower():
-				raise HTTPException(status_code=400, detail="Transaction already known to network")
-			elif "intrinsic gas too low" in error_msg.lower():
-				raise HTTPException(status_code=400, detail="Gas limit too low for transaction")
-			elif "invalid sender" in error_msg.lower():
-				raise HTTPException(status_code=400, detail="Invalid sender address")
-			elif "eip-155" in error_msg.lower():
-				raise HTTPException(status_code=400, detail="EIP-155 replay protection mismatch")
-			elif "gas price below minimum" in error_msg.lower() or "gas tip cap" in error_msg.lower():
-				raise HTTPException(status_code=400, detail="Gas price too low - increase gas price or tip")
-			elif "chain not found" in error_msg.lower():
-				raise HTTPException(status_code=400, detail="Invalid chain specified - check chain parameter")
-			else:
-				raise HTTPException(status_code=502, detail=f"RPC error: {error_msg}")
+		# Determine specific error type and provide helpful message
+		error_detail = str(e)
+		if "insufficient funds" in error_detail.lower():
+			status_code = 400
+			detail = "Insufficient funds for transaction"
+		elif "nonce too low" in error_detail.lower():
+			status_code = 400
+			detail = "Transaction nonce too low (transaction already processed)"
+		elif "already known" in error_detail.lower():
+			status_code = 400
+			detail = "Transaction already known to network"
+		elif "gas price too low" in error_detail.lower():
+			status_code = 400
+			detail = "Gas price too low for current network conditions"
+		elif "chain not found" in error_detail.lower():
+			status_code = 400
+			detail = f"Chain '{body.chain}' not supported or RPC not configured"
 		else:
-			raise HTTPException(status_code=502, detail=f"Network error: {str(e)}")
+			status_code = 500
+			detail = f"Transaction broadcast failed: {error_detail}"
+		
+		raise HTTPException(status_code=status_code, detail=detail)
+
+
+@app.get("/v1/sanctions/list")
+async def get_sanctions_list(partner_id: str = Depends(get_partner_id_from_api_key)):
+	"""Get the current list of sanctioned wallet addresses"""
+	try:
+		# Get the current sanctions list
+		sanctioned_count = sanctions_checker.get_sanctioned_count()
+		
+		# Read the JSON file to get the full list
+		import json
+		from pathlib import Path
+		
+		file_path = Path(__file__).parent.parent / "sanctioned_wallets.json"
+		if file_path.exists():
+			with open(file_path, 'r', encoding='utf-8') as f:
+				data = json.load(f)
+			
+			return {
+				"success": True,
+				"total_count": sanctioned_count,
+				"addresses": data.get("sanctioned_addresses", []),
+				"last_updated": data.get("last_updated", ""),
+				"description": data.get("description", "")
+			}
+		else:
+			return {
+				"success": False,
+				"message": "Sanctions file not found",
+				"total_count": 0,
+				"addresses": [],
+				"last_updated": "",
+				"description": ""
+			}
+			
+	except Exception as e:
+		print(f"Error getting sanctions list: {e}")
+		raise HTTPException(status_code=500, detail=f"Failed to retrieve sanctions list: {str(e)}")
+
+
+@app.post("/v1/sanctions/manage", response_model=SanctionedWalletResponse)
+async def manage_sanctions(body: SanctionedWalletRequest, partner_id: str = Depends(get_partner_id_from_api_key)):
+	"""Add or remove wallet addresses from the sanctions list"""
+	try:
+		address = body.address.strip()
+		action = body.action.lower()
+		
+		# Validate address format
+		if not address.startswith("0x") or len(address) != 42:
+			raise HTTPException(status_code=400, detail="Invalid wallet address format. Must be 0x-prefixed 42-character hex string.")
+		
+		# Validate action
+		if action not in ["add", "remove"]:
+			raise HTTPException(status_code=400, detail="Invalid action. Must be 'add' or 'remove'.")
+		
+		# Check if address is currently sanctioned
+		is_currently_sanctioned = sanctions_checker.is_sanctioned(address)
+		
+		if action == "add":
+			if is_currently_sanctioned:
+				return SanctionedWalletResponse(
+					success=False,
+					message=f"Address {address} is already in sanctions list",
+					address=address,
+					action=action,
+					total_count=sanctions_checker.get_sanctioned_count()
+				)
+			
+			# Add to sanctions list
+			success = sanctions_checker.add_sanctioned_address(address)
+			if success:
+				return SanctionedWalletResponse(
+					success=True,
+					message=f"Address {address} added to sanctions list",
+					address=address,
+					action=action,
+					total_count=sanctions_checker.get_sanctioned_count()
+				)
+			else:
+				raise HTTPException(status_code=500, detail="Failed to add address to sanctions list")
+		
+		elif action == "remove":
+			if not is_currently_sanctioned:
+				return SanctionedWalletResponse(
+					success=False,
+					message=f"Address {address} is not in sanctions list",
+					address=address,
+					action=action,
+					total_count=sanctions_checker.get_sanctioned_count()
+				)
+			
+			# Remove from sanctions list
+			success = sanctions_checker.remove_sanctioned_address(address)
+			if success:
+				return SanctionedWalletResponse(
+					success=True,
+					message=f"Address {address} removed from sanctions list",
+					address=address,
+					action=action,
+					total_count=sanctions_checker.get_sanctioned_count()
+				)
+			else:
+				raise HTTPException(status_code=500, detail="Failed to remove address from sanctions list")
+		
+	except HTTPException:
+		raise
+	except Exception as e:
+		print(f"Error managing sanctions: {e}")
+		raise HTTPException(status_code=500, detail=f"Failed to manage sanctions: {str(e)}")
+
+
+@app.get("/v1/sanctions/check/{address}")
+async def check_sanctions_status(address: str, partner_id: str = Depends(get_partner_id_from_api_key)):
+	"""Check if a specific wallet address is sanctioned"""
+	try:
+		# Validate address format
+		if not address.startswith("0x") or len(address) != 42:
+			raise HTTPException(status_code=400, detail="Invalid wallet address format. Must be 0x-prefixed 42-character hex string.")
+		
+		# Check sanctions status
+		is_sanctioned = sanctions_checker.is_sanctioned(address)
+		
+		return {
+			"address": address,
+			"is_sanctioned": is_sanctioned,
+			"status": "SANCTIONED" if is_sanctioned else "CLEAN",
+			"message": f"Address {address} is {'SANCTIONED' if is_sanctioned else 'CLEAN'}",
+			"checked_at": now_iso()
+		}
+		
+	except HTTPException:
+		raise
+	except Exception as e:
+		print(f"Error checking sanctions status: {e}")
+		raise HTTPException(status_code=500, detail=f"Failed to check sanctions status: {str(e)}")
+
+
+@app.get("/v1/sanctions/stats")
+async def get_sanctions_stats(partner_id: str = Depends(get_partner_id_from_api_key)):
+	"""Get statistics about the sanctions list"""
+	try:
+		total_count = sanctions_checker.get_sanctioned_count()
+		
+		# Read the JSON file to get additional stats
+		import json
+		from pathlib import Path
+		
+		file_path = Path(__file__).parent.parent / "sanctioned_wallets.json"
+		if file_path.exists():
+			with open(file_path, 'r', encoding='utf-8') as f:
+				data = json.load(f)
+			
+			last_updated = data.get("last_updated", "")
+			description = data.get("description", "")
+		else:
+			last_updated = ""
+			description = ""
+		
+		return {
+			"total_sanctioned_addresses": total_count,
+			"last_updated": last_updated,
+			"description": description,
+			"file_path": str(file_path),
+			"file_exists": file_path.exists(),
+			"checked_at": now_iso()
+		}
+		
+	except Exception as e:
+		print(f"Error getting sanctions stats: {e}")
+		raise HTTPException(status_code=500, detail=f"Failed to retrieve sanctions stats: {str(e)}")
+
+
+if __name__ == "__main__":
+	import uvicorn
+	uvicorn.run(app, host="0.0.0.0", port=8000)
