@@ -1,4 +1,3 @@
-
 {
   "rewrites": [
     {
@@ -14,8 +13,8 @@
       "destination": "https://mjak1524.apidog.io/:path*"
     },
     {
-      "src": "/((?!api|_next/static|_next/image|favicon.ico|.*\\.).*)$",
-      "dest": "/index.html"
+      "source": "/((?!api|_next/static|_next/image|favicon.ico|.*\\.).*)",
+      "destination": "/index.html"
     }
   ]
 }
