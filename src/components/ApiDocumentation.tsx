@@ -64,14 +64,15 @@ console.log(data);`;
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => window.open("https://resumeak.onrender.com/docs", "_blank")}
+              onClick={() => window.open("/docs", "_blank")}
             >
               <ExternalLink className="h-4 w-4 mr-2" />
-              Full Documentation
+              Interactive Documentation
             </Button>
           </CardTitle>
           <CardDescription>
             Your API is deployed at <code>https://resumeak.onrender.com</code> and ready to use with your API keys.
+            View the interactive documentation at <code>/docs</code>.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

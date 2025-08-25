@@ -1,0 +1,22 @@
+
+{
+  "rewrites": [
+    {
+      "source": "/docs/:path*",
+      "destination": "https://mjak1524.apidog.io/:path*"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/docs/(.*)",
+      "dest": "https://mjak1524.apidog.io/$1",
+      "headers": {
+        "cache-control": "s-maxage=0"
+      }
+    },
+    {
+      "src": "/((?!api|_next/static|_next/image|favicon.ico|.*\\.).*)$",
+      "dest": "/index.html"
+    }
+  ]
+}
