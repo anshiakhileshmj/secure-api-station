@@ -22,6 +22,9 @@ export default {
 			fontFamily: {
 				inter: ['Inter', 'sans-serif'],
 			},
+			backgroundImage: {
+				'gradient-radial': 'radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0) 70%)',
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
