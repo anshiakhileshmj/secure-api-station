@@ -9,7 +9,11 @@
       "destination": "https://mjak1524.apidog.io"
     },
     {
-      "source": "/((?!api|_next/static|_next/image|favicon.ico|.*\\.).*)",
+      "source": "/:path*.data",
+      "destination": "https://mjak1524.apidog.io/:path*.data"
+    },
+    {
+      "source": "/:path*",
       "destination": "/index.html"
     }
   ]
