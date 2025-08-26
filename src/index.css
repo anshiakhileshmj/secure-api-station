@@ -52,7 +52,6 @@
 
   body {
     @apply bg-background text-foreground font-inter;
-    background: var(--hero-gradient);
     min-height: 100vh;
   }
 
