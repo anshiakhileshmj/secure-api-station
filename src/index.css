@@ -70,20 +70,36 @@
   .btn-primary {
     background: var(--primary-gradient);
     box-shadow: var(--glow-primary);
-    @apply text-primary-foreground font-semibold px-6 py-3 rounded-lg transition-all duration-300 hover:scale-105;
+    @apply text-primary-foreground font-semibold rounded-full transition-all duration-300 hover:scale-105 hover:shadow-2xl;
   }
 
   .btn-secondary {
-    @apply bg-secondary text-secondary-foreground font-semibold px-6 py-3 rounded-lg border border-border transition-all duration-300 hover:bg-accent;
+    @apply font-semibold rounded-full border transition-all duration-300 hover:scale-105;
   }
 
   .feature-card {
-    @apply card-glass p-6 rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl;
+    @apply card-glass p-8 rounded-2xl transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl border border-border/30;
   }
 
   .api-key-display {
     @apply bg-muted/50 border border-border rounded-lg p-4 font-mono text-sm break-all;
   }
+
+  /* Floating animation for background elements */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    33% { transform: translateY(-10px) rotate(120deg); }
+    66% { transform: translateY(5px) rotate(240deg); }
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-float-delayed {
+    animation: float 8s ease-in-out infinite;
+    animation-delay: 2s;
+  }
 }
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
