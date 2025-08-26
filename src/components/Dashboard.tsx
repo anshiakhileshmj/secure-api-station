@@ -125,7 +125,7 @@ const Dashboard = () => {
           name: newKeyName.trim(),
           key: apiKey,
           key_hash: await hashApiKey(apiKey),
-          partner_id: developerProfile.partner_id, // Use permanent partner_id from profile
+          partner_id: developerProfile.partner_id, // Use the same partner_id from profile
           user_id: user?.id,
           is_active: true,
           rate_limit_per_minute: 60
@@ -241,11 +241,6 @@ const Dashboard = () => {
         <div>
           <h1 className="text-3xl font-bold">Relay API Dashboard</h1>
           <p className="text-muted-foreground">Manage API keys and test your deployed relay service</p>
-          {developerProfile && (
-            <p className="text-sm text-muted-foreground mt-2">
-              Partner ID: <span className="font-mono bg-muted px-2 py-1 rounded">{developerProfile.partner_id}</span>
-            </p>
-          )}
         </div>
         <Button 
           onClick={() => setShowCreateForm(true)}
@@ -328,25 +323,6 @@ const Dashboard = () => {
                   </Button>
                 </div>
               </div>
-              {developerProfile && (
-                <div className="space-y-2">
-                  <Label>Partner ID</Label>
-                  <div className="flex items-center gap-2">
-                    <Input 
-                      value={developerProfile.partner_id} 
-                      readOnly 
-                      className="font-mono text-sm"
-                    />
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => copyToClipboard(developerProfile.partner_id, "Partner ID")}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
 
