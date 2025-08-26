@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,10 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Copy, Eye, EyeOff, RotateCw, Trash2, Plus, TestTube, Book } from 'lucide-react';
+import { Copy, Eye, EyeOff, RotateCw, Trash2, Plus, User } from 'lucide-react';
 import { toast } from 'sonner';
-import ApiTester from './ApiTester';
-import ApiDocumentation from './ApiDocumentation';
+import Profile from './Profile';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -259,16 +257,12 @@ const Dashboard = () => {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="keys">API Keys</TabsTrigger>
-          <TabsTrigger value="test" disabled={!activeApiKey}>
-            <TestTube className="h-4 w-4 mr-2" />
-            Test API
-          </TabsTrigger>
-          <TabsTrigger value="docs" disabled={!activeApiKey}>
-            <Book className="h-4 w-4 mr-2" />
-            Documentation
+          <TabsTrigger value="profile">
+            <User className="h-4 w-4 mr-2" />
+            Profile
           </TabsTrigger>
         </TabsList>
 
@@ -536,12 +530,8 @@ const Dashboard = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="test">
-          {activeApiKey && <ApiTester apiKey={activeApiKey.key} />}
-        </TabsContent>
-
-        <TabsContent value="docs">
-          {activeApiKey && <ApiDocumentation apiKey={activeApiKey.key} />}
+        <TabsContent value="profile">
+          <Profile />
         </TabsContent>
       </Tabs>
 
