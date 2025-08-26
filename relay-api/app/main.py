@@ -1,4 +1,5 @@
 import os
+import logging
 from typing import Optional, Dict, List, Any, Tuple
 
 from fastapi import FastAPI, Header, HTTPException, Depends, Security
@@ -14,6 +15,14 @@ from .local_sanctions import local_sanctions_checker
 from .tx_decode import extract_to_address, is_hex_string
 from .utils import Decision, decision_from, now_iso
 from .risk_model import FeatureHit, compute_risk_score, log_risk_events, upsert_risk_score
+from .wallet_risk_assessor import WalletRiskAssessor
+from .audit_logger import SanctionsAuditLogger
+from .confirmation_system import confirmation_system
+from .models import (
+    SanctionsManageRequest, SanctionsResponse, WalletRiskAssessmentRequest, 
+    WalletRiskAssessmentResponse, SanctionsAuditLog
+)
+from .secrets import get_secret
 
 
 class FeatureHitIn(BaseModel):
@@ -114,6 +123,38 @@ class SanctionedWalletResponse(BaseModel):
 	total_count: int
 
 
+class BitqueryTransfersRequest(BaseModel):
+	network: str = Field(default="eth", description="Bitquery network, e.g., eth")
+	tokenAddresses: Optional[List[str]] = Field(default=None, description="Filter by token contract addresses")
+	limit: int = Field(default=50, ge=1, le=200)
+
+class BitqueryTransferRow(BaseModel):
+	token_symbol: str
+	amount: float
+	sender: str
+	receiver: str
+	timestamp: str
+
+class EtherscanWalletRequest(BaseModel):
+	address: str
+
+class EtherscanTxRow(BaseModel):
+	hash: str
+	timeStamp: str
+	value_eth: float
+	from_addr: str
+	to_addr: Optional[str]
+	isError: bool
+
+class EtherscanWalletResponse(BaseModel):
+	address: str
+	tx_count: int
+	first_tx_time: Optional[str]
+	failed_ratio: float
+	risk_rating: int
+	txs: List[EtherscanTxRow]
+
+
 app = FastAPI(
     title="Relay API", 
     version="1.2.0",
@@ -160,7 +201,14 @@ def custom_openapi():
 app.openapi = custom_openapi
 
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Global instances
 w3_clients: Dict[str, Web3] = {}
+wallet_risk_assessor = WalletRiskAssessor()
+audit_logger = SanctionsAuditLogger()
 
 def get_w3(chain: str) -> Web3:
 	key = chain.lower()
@@ -257,9 +305,28 @@ def get_partner_id_from_api_key(authorization: Optional[str] = Header(default=No
 
 @app.on_event("startup")
 async def startup_event() -> None:
-	# Local sanctions checker loads automatically on first use
-	# No async initialization needed
-	pass
+	"""Initialize secure systems on startup"""
+	try:
+		# Initialize wallet risk assessor
+		logger.info("Initializing wallet risk assessor...")
+		
+		# Initialize audit logger
+		logger.info("Initializing sanctions audit logger...")
+		
+		# Initialize confirmation system
+		logger.info("Initializing confirmation code system...")
+		
+		# Clean up expired confirmation codes
+		expired_count = confirmation_system.cleanup_expired_codes()
+		if expired_count > 0:
+			logger.info(f"Cleaned up {expired_count} expired confirmation codes")
+		
+		# Local sanctions checker loads automatically on first use
+		logger.info("Startup complete - secure sanctions management system ready")
+		
+	except Exception as e:
+		logger.error(f"Error during startup: {e}")
+		raise
 
 
 def _apply_policy(sanctioned: bool, score: int, band: str) -> Tuple[bool, Optional[str], bool]:
@@ -592,75 +659,162 @@ async def get_sanctions_list(partner_id: str = Depends(get_partner_id_from_api_k
 		raise HTTPException(status_code=500, detail=f"Failed to retrieve sanctions list: {str(e)}")
 
 
-@app.post("/v1/sanctions/manage", response_model=SanctionedWalletResponse)
-async def manage_sanctions(body: SanctionedWalletRequest, partner_id: str = Depends(get_partner_id_from_api_key)):
-	"""Add or remove wallet addresses from the sanctions list"""
-	try:
-		address = body.address.strip()
-		action = body.action.lower()
-		
-		# Validate address format
-		if not address.startswith("0x") or len(address) != 42:
-			raise HTTPException(status_code=400, detail="Invalid wallet address format. Must be 0x-prefixed 42-character hex string.")
-		
-		# Validate action
-		if action not in ["add", "remove"]:
-			raise HTTPException(status_code=400, detail="Invalid action. Must be 'add' or 'remove'.")
-		
-		# Check if address is currently sanctioned
-		is_currently_sanctioned = sanctions_checker.is_sanctioned(address)
-		
-		if action == "add":
-			if is_currently_sanctioned:
-				return SanctionedWalletResponse(
-					success=False,
-					message=f"Address {address} is already in sanctions list",
-					address=address,
-					action=action,
-					total_count=sanctions_checker.get_sanctioned_count()
-				)
-			
-			# Add to sanctions list
-			success = sanctions_checker.add_sanctioned_address(address)
-			if success:
-				return SanctionedWalletResponse(
-					success=True,
-					message=f"Address {address} added to sanctions list",
-					address=address,
-					action=action,
-					total_count=sanctions_checker.get_sanctioned_count()
-				)
-			else:
-				raise HTTPException(status_code=500, detail="Failed to add address to sanctions list")
-		
-		elif action == "remove":
-			if not is_currently_sanctioned:
-				return SanctionedWalletResponse(
-					success=False,
-					message=f"Address {address} is not in sanctions list",
-					address=address,
-					action=action,
-					total_count=sanctions_checker.get_sanctioned_count()
-				)
-			
-			# Remove from sanctions list
-			success = sanctions_checker.remove_sanctioned_address(address)
-			if success:
-				return SanctionedWalletResponse(
-					success=True,
-					message=f"Address {address} removed from sanctions list",
-					address=address,
-					action=action,
-					total_count=sanctions_checker.get_sanctioned_count()
-				)
-			else:
-				raise HTTPException(status_code=500, detail="Failed to remove address from sanctions list")
-		
-	except HTTPException:
-		raise
-	except Exception as e:
-		print(f"Error managing sanctions: {e}")
-		raise HTTPException(status_code=500, detail=f"Failed to manage sanctions: {str(e)}")
+@app.post("/v1/sanctions/manage", response_model=SanctionsResponse)
+async def manage_sanctions(
+    request: SanctionsManageRequest,
+    partner_id: str = Depends(get_partner_id_from_api_key)
+):
+    """Secure sanctions management with risk validation and audit logging"""
+    
+    try:
+        address = request.address.lower()
+        action = request.action.lower()
+        
+        logger.info(f"Sanctions management request: {action} for {address} by {partner_id}")
+        
+        # Validate address format using the risk assessor
+        if not wallet_risk_assessor.is_valid_address(address):
+            raise HTTPException(status_code=400, detail="Invalid address format")
+        
+        # Check if address is currently sanctioned
+        is_currently_sanctioned = sanctions_checker.is_sanctioned(address)
+        
+        if action == "add":
+            if is_currently_sanctioned:
+                return SanctionsResponse(
+                    success=False,
+                    message=f"Address {address} is already in sanctions list",
+                    address=address,
+                    action=action,
+                    total_count=sanctions_checker.get_sanctioned_count()
+                )
+            
+            # CRITICAL: Validate wallet before adding to sanctions
+            logger.info(f"Starting risk assessment for {address}")
+            risk_profile = await wallet_risk_assessor.assess_wallet_risk(address, request.chain)
+            
+            # Security checks
+            if risk_profile.risk_score < 70:  # Require high risk for sanctions
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Address {address} has insufficient risk (score: {risk_profile.risk_score}) to be sanctioned. Minimum required: 70"
+                )
+            
+            if risk_profile.confidence < 0.6:  # Require good data quality
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Insufficient data confidence ({risk_profile.confidence:.2f}) for {address}. Cannot safely sanction."
+                )
+            
+            # Check if admin approval is required
+            if confirmation_system.require_admin_approval(partner_id, address, risk_profile.risk_score):
+                raise HTTPException(
+                    status_code=403,
+                    detail="Admin approval required for this sanctions operation. Contact support."
+                )
+            
+            # Log the risk assessment
+            logger.info(f"Risk assessment for {address}: Score={risk_profile.risk_score}, Confidence={risk_profile.confidence}")
+            
+            # Add to sanctions with risk metadata
+            success = sanctions_checker.add_sanctioned_address(address)
+            
+            if success:
+                # Log the action for audit
+                await audit_logger.log_sanctions_action(
+                    partner_id=partner_id,
+                    action="ADD",
+                    address=address,
+                    risk_score=risk_profile.risk_score,
+                    risk_factors=risk_profile.risk_factors,
+                    data_sources=risk_profile.data_sources,
+                    reason=request.reason
+                )
+                
+                return SanctionsResponse(
+                    success=True,
+                    message=f"Address {address} added to sanctions list",
+                    address=address,
+                    action=action,
+                    risk_profile={
+                        "risk_score": risk_profile.risk_score,
+                        "confidence": risk_profile.confidence,
+                        "risk_factors": risk_profile.risk_factors,
+                        "data_sources": risk_profile.data_sources,
+                        "transaction_count": risk_profile.transaction_count,
+                        "total_volume": risk_profile.total_volume,
+                        "last_activity": risk_profile.last_activity,
+                        "suspicious_patterns": risk_profile.suspicious_patterns
+                    },
+                    total_count=sanctions_checker.get_sanctioned_count()
+                )
+            else:
+                raise HTTPException(status_code=500, detail="Failed to add address to sanctions list")
+                
+        elif action == "remove":
+            if not is_currently_sanctioned:
+                return SanctionsResponse(
+                    success=False,
+                    message=f"Address {address} is not in sanctions list",
+                    address=address,
+                    action=action,
+                    total_count=sanctions_checker.get_sanctioned_count()
+                )
+            
+            # CRITICAL: Additional validation before removal
+            current_risk = await wallet_risk_assessor.assess_wallet_risk(address, request.chain)
+            
+            # Only allow removal if risk has significantly decreased
+            if current_risk.risk_score > 30:  # Still risky
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot remove {address} - still has high risk (score: {current_risk.risk_score})"
+                )
+            
+            # Require additional confirmation for removal
+            if not request.confirmation_code:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Removal requires confirmation code for security"
+                )
+            
+            # Verify confirmation code
+            is_valid, message = confirmation_system.verify_confirmation_code(
+                request.confirmation_code, partner_id, address, action
+            )
+            
+            if not is_valid:
+                raise HTTPException(status_code=400, detail=f"Invalid confirmation code: {message}")
+            
+            success = sanctions_checker.remove_sanctioned_address(address)
+            
+            if success:
+                # Log the removal action
+                await audit_logger.log_sanctions_action(
+                    partner_id=partner_id,
+                    action="REMOVE",
+                    address=address,
+                    risk_score=current_risk.risk_score,
+                    risk_factors=current_risk.risk_factors,
+                    data_sources=current_risk.data_sources,
+                    reason=request.reason
+                )
+                
+                return SanctionsResponse(
+                    success=True,
+                    message=f"Address {address} removed from sanctions list",
+                    address=address,
+                    action=action,
+                    total_count=sanctions_checker.get_sanctioned_count()
+                )
+            else:
+                raise HTTPException(status_code=500, detail="Failed to remove address from sanctions list")
+                
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Sanctions management error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/v1/sanctions/check/{address}")
@@ -687,6 +841,80 @@ async def check_sanctions_status(address: str, partner_id: str = Depends(get_par
 	except Exception as e:
 		print(f"Error checking sanctions status: {e}")
 		raise HTTPException(status_code=500, detail=f"Failed to check sanctions status: {str(e)}")
+
+
+@app.post("/v1/wallet/assess", response_model=WalletRiskAssessmentResponse)
+async def assess_wallet_risk(
+    request: WalletRiskAssessmentRequest,
+    partner_id: str = Depends(get_partner_id_from_api_key)
+):
+    """Assess wallet risk without adding to sanctions"""
+    
+    try:
+        address = request.address.lower()
+        
+        logger.info(f"Wallet risk assessment request for {address} by {partner_id}")
+        
+        # Validate address format
+        if not wallet_risk_assessor.is_valid_address(address):
+            raise HTTPException(status_code=400, detail="Invalid address format")
+        
+        # Perform comprehensive risk assessment
+        risk_profile = await wallet_risk_assessor.assess_wallet_risk(address, request.chain)
+        
+        # Determine risk band
+        if risk_profile.risk_score >= 90:
+            risk_band = "CRITICAL"
+        elif risk_profile.risk_score >= 80:
+            risk_band = "HIGH"
+        elif risk_profile.risk_score >= 60:
+            risk_band = "MEDIUM"
+        elif risk_profile.risk_score >= 40:
+            risk_band = "ELEVATED"
+        else:
+            risk_band = "LOW"
+        
+        # Generate recommendation
+        if risk_profile.risk_score >= 80:
+            recommendation = "BLOCK - High risk wallet detected"
+        elif risk_profile.risk_score >= 60:
+            recommendation = "MONITOR - Elevated risk, consider additional screening"
+        elif risk_profile.risk_score >= 40:
+            recommendation = "REVIEW - Moderate risk, standard screening recommended"
+        else:
+            recommendation = "ALLOW - Low risk wallet"
+        
+        # Log the assessment for audit
+        await audit_logger.log_sanctions_action(
+            partner_id=partner_id,
+            action="ASSESS",
+            address=address,
+            risk_score=risk_profile.risk_score,
+            risk_factors=risk_profile.risk_factors,
+            data_sources=risk_profile.data_sources,
+            reason="Risk assessment request"
+        )
+        
+        return WalletRiskAssessmentResponse(
+            address=address,
+            risk_score=risk_profile.risk_score,
+            risk_band=risk_band,
+            risk_factors=risk_profile.risk_factors,
+            confidence=risk_profile.confidence,
+            data_sources=risk_profile.data_sources,
+            transaction_count=risk_profile.transaction_count,
+            total_volume=risk_profile.total_volume,
+            last_activity=risk_profile.last_activity,
+            suspicious_patterns=risk_profile.suspicious_patterns,
+            assessment_timestamp=risk_profile.assessment_timestamp,
+            recommendation=recommendation
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Wallet risk assessment error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @app.get("/v1/sanctions/stats")
@@ -722,6 +950,262 @@ async def get_sanctions_stats(partner_id: str = Depends(get_partner_id_from_api_
 	except Exception as e:
 		print(f"Error getting sanctions stats: {e}")
 		raise HTTPException(status_code=500, detail=f"Failed to retrieve sanctions stats: {str(e)}")
+
+
+@app.get("/v1/audit/logs")
+async def get_audit_logs(
+    partner_id: str = Depends(get_partner_id_from_api_key),
+    action: Optional[str] = None,
+    address: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    limit: int = 100
+):
+    """Get audit logs for sanctions operations"""
+    
+    try:
+        logs = await audit_logger.get_audit_logs(
+            partner_id=partner_id,
+            action=action,
+            address=address,
+            start_date=start_date,
+            end_date=end_date,
+            limit=limit
+        )
+        
+        return {
+            "success": True,
+            "total_logs": len(logs),
+            "logs": logs,
+            "filters": {
+                "partner_id": partner_id,
+                "action": action,
+                "address": address,
+                "start_date": start_date,
+                "end_date": end_date,
+                "limit": limit
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error retrieving audit logs: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve audit logs")
+
+
+@app.get("/v1/audit/summary")
+async def get_audit_summary(partner_id: str = Depends(get_partner_id_from_api_key)):
+    """Get summary statistics of audit logs"""
+    
+    try:
+        summary = await audit_logger.get_audit_summary(partner_id=partner_id)
+        
+        return {
+            "success": True,
+            "summary": summary
+        }
+        
+    except Exception as e:
+        logger.error(f"Error generating audit summary: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate audit summary")
+
+
+@app.post("/v1/confirmation/generate")
+async def generate_confirmation_code(
+    address: str,
+    action: str,
+    partner_id: str = Depends(get_partner_id_from_api_key)
+):
+    """Generate a confirmation code for sanctions removal"""
+    
+    try:
+        if action not in ["remove"]:
+            raise HTTPException(status_code=400, detail="Confirmation codes only available for removal actions")
+        
+        # Validate address format
+        if not wallet_risk_assessor.is_valid_address(address):
+            raise HTTPException(status_code=400, detail="Invalid address format")
+        
+        # Generate confirmation code
+        confirmation_code = confirmation_system.generate_confirmation_code(partner_id, address, action)
+        
+        return {
+            "success": True,
+            "confirmation_code": confirmation_code,
+            "address": address,
+            "action": action,
+            "expires_in": "1 hour",
+            "message": "Use this confirmation code when removing the address from sanctions"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error generating confirmation code: {e}")
+        if "Rate limit exceeded" in str(e):
+            raise HTTPException(status_code=429, detail="Too many confirmation code requests. Please wait before requesting another.")
+        raise HTTPException(status_code=500, detail="Failed to generate confirmation code")
+
+# Bitquery streaming transfers endpoint
+@app.post("/v1/bitquery/transfers", response_model=List[BitqueryTransferRow])
+async def bitquery_transfers(body: BitqueryTransfersRequest, partner_id: str = Depends(get_partner_id_from_api_key)):
+	"""Proxy Bitquery streaming GraphQL to fetch recent token transfers (e.g., USDC/USDT)."""
+	access_token = get_secret("BITQUERY_ACCESS_TOKEN", env_var="BITQUERY_ACCESS_TOKEN")
+	if not access_token:
+		raise HTTPException(status_code=500, detail="Missing Bitquery access token")
+	try:
+		headers = {
+			"Content-Type": "application/json",
+			"Authorization": f"Bearer {access_token}"
+		}
+		# Use provided tokens or default to USDC/USDT on Ethereum
+		tokens = body.tokenAddresses or [
+			"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",  # USDC
+			"0xdac17f958d2ee523a2206206994597c13d831ec7"   # USDT
+		]
+		query = {
+			"query": """
+			{ EVM(dataset: realtime, network: eth) {
+			  Transfers(
+			    where: { Transfer: { Currency: { SmartContract: { in: TOKEN_LIST } } } }
+			    limit: {count: LIMIT}
+			    orderBy: {descending: Block_Time}
+			  ) {
+			    Block { Time }
+			    Transfer {
+			      Amount
+			      Currency { Name Symbol }
+			      Sender
+			      Receiver
+			    }
+			  }
+			} }
+			""".replace("TOKEN_LIST", str(tokens)).replace("LIMIT", str(body.limit))
+		}
+		resp = requests.post("https://streaming.bitquery.io/graphql", json=query, headers=headers, timeout=20)
+		if resp.status_code != 200:
+			raise HTTPException(status_code=resp.status_code, detail=f"Bitquery error: {resp.text[:200]}")
+		data = resp.json()
+		rows = data.get("data", {}).get("EVM", {}).get("Transfers", [])
+		out: List[BitqueryTransferRow] = []
+		for r in rows:
+			blk = r.get("Block", {})
+			tr = r.get("Transfer", {})
+			cur = (tr.get("Currency") or {})
+			out.append(BitqueryTransferRow(
+				token_symbol=str(cur.get("Symbol") or cur.get("Name") or ""),
+				amount=float(tr.get("Amount") or 0),
+				sender=str(tr.get("Sender") or ""),
+				receiver=str(tr.get("Receiver") or ""),
+				timestamp=str(blk.get("Time") or "")
+			))
+		return out
+	except HTTPException:
+		raise
+	except Exception as e:
+		logger.error(f"Bitquery transfers error: {e}")
+		raise HTTPException(status_code=500, detail="Failed to fetch transfers")
+
+
+def _format_etherscan_tx(tx: Dict[str, Any]) -> EtherscanTxRow:
+	value_eth = 0.0
+	try:
+		value_eth = float(tx.get("value", "0")) / 1e18
+	except Exception:
+		value_eth = 0.0
+	# human time
+	try:
+		ts = int(tx.get("timeStamp", "0"))
+		iso = datetime.fromtimestamp(ts, tz.utc).isoformat()
+	except Exception:
+		iso = ""
+	return EtherscanTxRow(
+		hash=str(tx.get("hash")),
+		timeStamp=iso,
+		value_eth=value_eth,
+		from_addr=str(tx.get("from")),
+		to_addr=str(tx.get("to")) if tx.get("to") else None,
+		isError=str(tx.get("isError", "0")) == "1",
+	)
+
+
+def _basic_wallet_risk(txs: List[EtherscanTxRow]) -> Tuple[int, Optional[str], float]:
+	"""Compute a simple 0-100 risk rating based on age, activity, and failures."""
+	if not txs:
+		return 20, None, 0.0
+	# Age
+	first_time = txs[-1].timeStamp or txs[-1].timeStamp
+	first_ts = None
+	try:
+		first_ts = datetime.fromisoformat(first_time.replace("Z", "+00:00")) if first_time else None
+	except Exception:
+		first_ts = None
+	now = datetime.now(tz.utc)
+	age_days = 0
+	if first_ts:
+		age_days = max(0, (now - first_ts).days)
+	# Fail ratio
+	fails = sum(1 for t in txs if t.isError)
+	ratio = (fails / len(txs)) if txs else 0.0
+	# Tx count
+	count = len(txs)
+	# Scoring (higher = riskier)
+	score = 0
+	if age_days < 7:
+		score += 20
+	elif age_days < 30:
+		score += 10
+	if count > 1000:
+		score += 20
+	elif count > 200:
+		score += 10
+	if ratio > 0.2:
+		score += 20
+	elif ratio > 0.05:
+		score += 10
+	return min(100, score), (first_ts.isoformat() if first_ts else None), ratio
+
+
+@app.post("/v1/wallet/etherscan_txs", response_model=EtherscanWalletResponse)
+async def etherscan_wallet_txs(body: EtherscanWalletRequest, partner_id: str = Depends(get_partner_id_from_api_key)):
+	"""Fetch wallet transactions from Etherscan and return normalized fields + basic risk rating."""
+	address = body.address.strip()
+	if not wallet_risk_assessor.is_valid_address(address):
+		raise HTTPException(status_code=400, detail="Invalid address format")
+	api_key = get_secret("ETHERSCAN_API_KEY", env_var="ETHERSCAN_API_KEY")
+	if not api_key:
+		raise HTTPException(status_code=500, detail="Missing ETHERSCAN_API_KEY")
+	try:
+		params = {
+			"module": "account",
+			"action": "txlist",
+			"address": address,
+			"startblock": 0,
+			"endblock": 99999999,
+			"sort": "desc",
+			"apikey": api_key,
+		}
+		resp = requests.get("https://api.etherscan.io/api", params=params, timeout=20)
+		if resp.status_code != 200:
+			raise HTTPException(status_code=resp.status_code, detail=f"Etherscan error: {resp.text[:200]}")
+		payload = resp.json()
+		if str(payload.get("status")) != "1":
+			# No txs or error
+			txs_raw = payload.get("result", [])
+		else:
+			txs_raw = payload.get("result", [])
+		txs = [_format_etherscan_tx(tx) for tx in txs_raw]
+		risk, first_time, fail_ratio = _basic_wallet_risk(txs)
+		return EtherscanWalletResponse(
+			address=address,
+			tx_count=len(txs),
+			first_tx_time=first_time,
+			failed_ratio=round(fail_ratio, 4),
+			risk_rating=risk,
+			txs=txs,
+		)
+	except HTTPException:
+		raise
+	except Exception as e:
+		logger.error(f"Etherscan wallet txs error: {e}")
+		raise HTTPException(status_code=500, detail="Failed to fetch wallet transactions")
 
 
 if __name__ == "__main__":
