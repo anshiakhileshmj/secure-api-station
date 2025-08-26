@@ -1,16 +1,12 @@
 {
   "rewrites": [
     {
-      "source": "/docs",
-      "destination": "https://mjak1524.apidog.io"
-    },
-    {
-      "source": "/docs/",
-      "destination": "https://mjak1524.apidog.io"
-    },
-    {
       "source": "/docs/:path*",
       "destination": "https://mjak1524.apidog.io/:path*"
+    },
+    {
+      "source": "/docs",
+      "destination": "https://mjak1524.apidog.io"
     },
     {
       "source": "/((?!api|_next/static|_next/image|favicon.ico|.*\\.).*)",
