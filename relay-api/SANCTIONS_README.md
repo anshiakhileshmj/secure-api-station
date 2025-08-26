@@ -239,3 +239,5 @@ The API provides clear logging:
 5. **Monitor** logs for sanctions detection
 
 The system is now fully self-contained and will work reliably on Render without any external database dependencies for sanctions checking!
+
+
