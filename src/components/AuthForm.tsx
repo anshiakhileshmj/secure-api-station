@@ -17,7 +17,7 @@ const AuthForm = () => {
   useEffect(() => {
     if (user) {
       // Redirect to app page after successful authentication
-      navigate('/');
+      navigate('/dashboard');
     }
   }, [user, navigate]);
 
