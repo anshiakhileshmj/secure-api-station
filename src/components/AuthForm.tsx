@@ -10,19 +10,13 @@ const AuthForm = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [countryCode, setCountryCode] = useState('+1');
-  const [country, setCountry] = useState('');
-  const [companyName, setCompanyName] = useState('');
-  const [businessType, setBusinessType] = useState('');
-  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [name, setName] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
+      // Redirect to app page after successful authentication
       navigate('/dashboard');
     }
   }, [user, navigate]);
@@ -35,26 +29,6 @@ const AuthForm = () => {
       toast({
         title: "Missing Fields",
         description: "Please fill in all fields.",
-        variant: "destructive"
-      });
-      setLoading(false);
-      return;
-    }
-
-    if (isSignUp && (!firstName || !lastName || !phoneNumber || !country || !companyName || !businessType || !websiteUrl)) {
-      toast({
-        title: "Missing Fields",
-        description: "Please fill in all required fields.",
-        variant: "destructive"
-      });
-      setLoading(false);
-      return;
-    }
-
-    if (isSignUp && websiteUrl && !websiteUrl.startsWith('https://www.')) {
-      toast({
-        title: "Invalid Website URL",
-        description: "Website URL must start with https://www.",
         variant: "destructive"
       });
       setLoading(false);
@@ -91,25 +65,7 @@ const AuthForm = () => {
     setIsSignUp(!isSignUp);
     setEmail('');
     setPassword('');
-    setFirstName('');
-    setLastName('');
-    setPhoneNumber('');
-    setCountryCode('+1');
-    setCountry('');
-    setCompanyName('');
-    setBusinessType('');
-    setWebsiteUrl('');
-  };
-
-  const handleWebsiteUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value;
-    if (value && !value.startsWith('https://www.')) {
-      // Remove any existing protocol
-      value = value.replace(/^https?:\/\/(www\.)?/, '');
-      // Add the required prefix
-      value = 'https://www.' + value;
-    }
-    setWebsiteUrl(value);
+    setName('');
   };
 
   return (
@@ -118,8 +74,8 @@ const AuthForm = () => {
         <div className="card-switch">
           <label className="switch">
             <input 
-              className="toggle" 
               type="checkbox" 
+              className="toggle" 
               checked={isSignUp}
               onChange={handleToggle}
             />
@@ -130,19 +86,19 @@ const AuthForm = () => {
                 <div className="title">Log in</div>
                 <form className="flip-card__form" onSubmit={handleSubmit}>
                   <input 
-                    type="email" 
-                    placeholder="Email" 
-                    name="email" 
                     className="flip-card__input" 
+                    name="email" 
+                    placeholder="Email" 
+                    type="email" 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
                   />
                   <input 
-                    type="password" 
-                    placeholder="Password" 
-                    name="password" 
                     className="flip-card__input" 
+                    name="password" 
+                    placeholder="Password" 
+                    type="password" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -155,114 +111,27 @@ const AuthForm = () => {
               <div className="flip-card__back">
                 <div className="title">Sign up</div>
                 <form className="flip-card__form" onSubmit={handleSubmit}>
-                  <div className="name-row">
-                    <input 
-                      type="text" 
-                      placeholder="First Name" 
-                      className="flip-card__input half-width" 
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      required
-                    />
-                    <input 
-                      type="text" 
-                      placeholder="Last Name" 
-                      className="flip-card__input half-width" 
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      required
-                    />
-                  </div>
                   <input 
-                    type="email" 
-                    placeholder="Email" 
-                    name="email" 
                     className="flip-card__input" 
+                    placeholder="Name" 
+                    type="text" 
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                  <input 
+                    className="flip-card__input" 
+                    name="email" 
+                    placeholder="Email" 
+                    type="email" 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
                   />
-                  <div className="phone-row">
-                    <select 
-                      className="country-code-select"
-                      value={countryCode}
-                      onChange={(e) => setCountryCode(e.target.value)}
-                    >
-                      <option value="+1">+1</option>
-                      <option value="+44">+44</option>
-                      <option value="+91">+91</option>
-                      <option value="+86">+86</option>
-                      <option value="+33">+33</option>
-                      <option value="+49">+49</option>
-                      <option value="+81">+81</option>
-                      <option value="+82">+82</option>
-                    </select>
-                    <input 
-                      type="tel" 
-                      placeholder="Phone Number" 
-                      className="flip-card__input phone-input" 
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <select 
-                    className="flip-card__input"
-                    value={country}
-                    onChange={(e) => setCountry(e.target.value)}
-                    required
-                  >
-                    <option value="">Select Country</option>
-                    <option value="United States">United States</option>
-                    <option value="United Kingdom">United Kingdom</option>
-                    <option value="Canada">Canada</option>
-                    <option value="Australia">Australia</option>
-                    <option value="Germany">Germany</option>
-                    <option value="France">France</option>
-                    <option value="Japan">Japan</option>
-                    <option value="South Korea">South Korea</option>
-                    <option value="India">India</option>
-                    <option value="China">China</option>
-                    <option value="Singapore">Singapore</option>
-                    <option value="Switzerland">Switzerland</option>
-                  </select>
                   <input 
-                    type="text" 
-                    placeholder="Company Name" 
                     className="flip-card__input" 
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    required
-                  />
-                  <select 
-                    className="flip-card__input"
-                    value={businessType}
-                    onChange={(e) => setBusinessType(e.target.value)}
-                    required
-                  >
-                    <option value="">Select Business Type</option>
-                    <option value="Cryptocurrency Exchange">Cryptocurrency Exchange</option>
-                    <option value="Payment Processor">Payment Processor</option>
-                    <option value="Digital Wallet Provider">Digital Wallet Provider</option>
-                    <option value="DeFi Protocol">DeFi Protocol</option>
-                    <option value="Banking Institution">Banking Institution</option>
-                    <option value="Fintech Startup">Fintech Startup</option>
-                    <option value="Compliance Firm">Compliance Firm</option>
-                    <option value="Other">Other</option>
-                  </select>
-                  <input 
-                    type="url" 
-                    placeholder="Website URL (https://www.example.com)" 
-                    className="flip-card__input" 
-                    value={websiteUrl}
-                    onChange={handleWebsiteUrlChange}
-                    required
-                  />
-                  <input 
-                    type="password" 
-                    placeholder="Password" 
                     name="password" 
-                    className="flip-card__input" 
+                    placeholder="Password" 
+                    type="password" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -283,13 +152,13 @@ const AuthForm = () => {
 const StyledWrapper = styled.div`
   .wrapper {
     --input-focus: #2d8cf0;
-    --font-color: #fefefe;
-    --font-color-sub: #7e7e7e;
-    --bg-color: #111;
-    --bg-color-alt: #7e7e7e;
-    --main-color: #fefefe;
+    --font-color: #323232;
+    --font-color-sub: #666;
+    --bg-color: #fff;
+    --bg-color-alt: #666;
+    --main-color: #323232;
   }
-
+  /* switch card */
   .switch {
     transform: translateY(-200px);
     position: relative;
@@ -376,9 +245,11 @@ const StyledWrapper = styled.div`
     text-decoration: underline;
   }
 
+  /* card */ 
+
   .flip-card__inner {
-    width: 350px;
-    height: 600px;
+    width: 300px;
+    height: 350px;
     position: relative;
     background-color: transparent;
     perspective: 1000px;
@@ -403,30 +274,27 @@ const StyledWrapper = styled.div`
     justify-content: center;
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
-    background: var(--bg-color);
-    gap: 15px;
+    background: lightgrey;
+    gap: 20px;
     border-radius: 5px;
     border: 2px solid var(--main-color);
     box-shadow: 4px 4px var(--main-color);
-    width: 100%;
-    height: 100%;
-    box-sizing: border-box;
   }
 
   .flip-card__back {
+    width: 100%;
     transform: rotateY(180deg);
-    overflow-y: auto;
   }
 
   .flip-card__form {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 15px;
+    gap: 20px;
   }
 
   .title {
-    margin: 10px 0 20px 0;
+    margin: 20px 0 20px 0;
     font-size: 25px;
     font-weight: 900;
     text-align: center;
@@ -434,7 +302,7 @@ const StyledWrapper = styled.div`
   }
 
   .flip-card__input {
-    width: 280px;
+    width: 250px;
     height: 40px;
     border-radius: 5px;
     border: 2px solid var(--main-color);
@@ -445,7 +313,6 @@ const StyledWrapper = styled.div`
     color: var(--font-color);
     padding: 5px 10px;
     outline: none;
-    box-sizing: border-box;
   }
 
   .flip-card__input::placeholder {
@@ -457,60 +324,13 @@ const StyledWrapper = styled.div`
     border: 2px solid var(--input-focus);
   }
 
-  .name-row {
-    display: flex;
-    gap: 10px;
-    width: 100%;
-    justify-content: center;
-  }
-
-  .half-width {
-    width: 135px !important;
-  }
-
-  .phone-row {
-    display: flex;
-    gap: 10px;
-    width: 100%;
-    justify-content: center;
-    align-items: center;
-  }
-
-  .country-code-select {
-    width: 80px;
-    height: 40px;
-    border-radius: 5px;
-    border: 2px solid var(--main-color);
-    background-color: var(--bg-color);
-    box-shadow: 4px 4px var(--main-color);
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--font-color);
-    padding: 5px;
-    outline: none;
-    cursor: pointer;
-  }
-
-  .phone-input {
-    width: 190px !important;
-  }
-
-  select.flip-card__input {
-    cursor: pointer;
-  }
-
-  select.flip-card__input option {
-    background-color: var(--bg-color);
-    color: var(--font-color);
-  }
-
   .flip-card__btn:active, .button-confirm:active {
     box-shadow: 0px 0px var(--main-color);
     transform: translate(3px, 3px);
   }
 
   .flip-card__btn {
-    margin: 15px 0 10px 0;
+    margin: 20px 0 20px 0;
     width: 120px;
     height: 40px;
     border-radius: 5px;

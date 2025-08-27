@@ -1,12 +1,12 @@
 
-import Hero from '@/components/Hero';
+import AuthForm from '@/components/AuthForm';
 
-const Index = () => {
+const Auth = () => {
   return (
-    <div>
-      <Hero />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
+      <AuthForm />
     </div>
   );
 };
 
-export default Index;
+export default Auth;
