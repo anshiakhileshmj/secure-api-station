@@ -137,14 +137,22 @@ const AuthForm = () => {
     setIsPhoneValid(false);
   };
 
-  // Check if form is valid for signup
+  // Simplified form validation
   const isSignUpFormValid = isSignUp ? (
-    firstName && lastName && companyName && jobTitle && email && 
-    password && confirmPassword && country && businessType && isPhoneValid
+    firstName.trim() && 
+    lastName.trim() && 
+    companyName.trim() && 
+    jobTitle.trim() && 
+    email.trim() && 
+    password.trim() && 
+    confirmPassword.trim() && 
+    country.trim() && 
+    businessType.trim() && 
+    isPhoneValid &&
+    password === confirmPassword
   ) : true;
 
-  // Check if form is valid for signin
-  const isSignInFormValid = !isSignUp ? (email && password) : true;
+  const isSignInFormValid = !isSignUp ? (email.trim() && password.trim()) : true;
 
   const isFormValid = isSignUpFormValid && isSignInFormValid;
 
