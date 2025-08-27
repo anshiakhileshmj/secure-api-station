@@ -1,19 +1,12 @@
 
-import React, { useState } from 'react';
 import AuthForm from '@/components/AuthForm';
 
-const Index = () => {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signup');
-
-  const handleToggleMode = () => {
-    setMode(mode === 'signin' ? 'signup' : 'signin');
-  };
-
+const Auth = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
-      <AuthForm mode={mode} onToggleMode={handleToggleMode} />
+      <AuthForm />
     </div>
   );
 };
 
-export default Index;
+export default Auth;

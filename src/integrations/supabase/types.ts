@@ -145,51 +145,33 @@ export type Database = {
       developer_profiles: {
         Row: {
           api_usage_plan: string | null
-          business_type: string | null
           company_name: string | null
-          country: string | null
           created_at: string | null
-          first_name: string | null
           id: string
-          job_title: string | null
-          last_name: string | null
           monthly_request_limit: number | null
           partner_id: string
-          phone: string | null
           updated_at: string | null
           user_id: string
           website: string | null
         }
         Insert: {
           api_usage_plan?: string | null
-          business_type?: string | null
           company_name?: string | null
-          country?: string | null
           created_at?: string | null
-          first_name?: string | null
           id?: string
-          job_title?: string | null
-          last_name?: string | null
           monthly_request_limit?: number | null
           partner_id: string
-          phone?: string | null
           updated_at?: string | null
           user_id: string
           website?: string | null
         }
         Update: {
           api_usage_plan?: string | null
-          business_type?: string | null
           company_name?: string | null
-          country?: string | null
           created_at?: string | null
-          first_name?: string | null
           id?: string
-          job_title?: string | null
-          last_name?: string | null
           monthly_request_limit?: number | null
           partner_id?: string
-          phone?: string | null
           updated_at?: string | null
           user_id?: string
           website?: string | null
