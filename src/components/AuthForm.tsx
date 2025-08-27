@@ -1,352 +1,412 @@
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { toast } from "@/hooks/use-toast";
-import { useNavigate } from 'react-router-dom';
-import styled from 'styled-components';
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+import { Eye, EyeOff, Mail, Lock, User, Building, Phone, Globe, MapPin, Briefcase } from 'lucide-react';
 
-const AuthForm = () => {
-  const { signUp, signIn, user } = useAuth();
-  const navigate = useNavigate();
+interface AuthFormProps {
+  mode: 'signin' | 'signup';
+  onToggleMode: () => void;
+}
+
+const COUNTRIES = [
+  { code: 'us', name: 'United States', flag: '🇺🇸' },
+  { code: 'gb', name: 'United Kingdom', flag: '🇬🇧' },
+  { code: 'ca', name: 'Canada', flag: '🇨🇦' },
+  { code: 'au', name: 'Australia', flag: '🇦🇺' },
+  { code: 'de', name: 'Germany', flag: '🇩🇪' },
+  { code: 'fr', name: 'France', flag: '🇫🇷' },
+  { code: 'es', name: 'Spain', flag: '🇪🇸' },
+  { code: 'it', name: 'Italy', flag: '🇮🇹' },
+  { code: 'nl', name: 'Netherlands', flag: '🇳🇱' },
+  { code: 'ch', name: 'Switzerland', flag: '🇨🇭' },
+  { code: 'se', name: 'Sweden', flag: '🇸🇪' },
+  { code: 'no', name: 'Norway', flag: '🇳🇴' },
+  { code: 'dk', name: 'Denmark', flag: '🇩🇰' },
+  { code: 'fi', name: 'Finland', flag: '🇫🇮' },
+  { code: 'jp', name: 'Japan', flag: '🇯🇵' },
+  { code: 'kr', name: 'South Korea', flag: '🇰🇷' },
+  { code: 'sg', name: 'Singapore', flag: '🇸🇬' },
+  { code: 'hk', name: 'Hong Kong', flag: '🇭🇰' },
+  { code: 'ae', name: 'United Arab Emirates', flag: '🇦🇪' },
+  { code: 'il', name: 'Israel', flag: '🇮🇱' },
+  // Add more countries as needed
+];
+
+const BUSINESS_TYPES = [
+  { value: 'cryptocurrency-exchange', label: 'Cryptocurrency Exchange' },
+  { value: 'payment-processor', label: 'Payment Processor' },
+  { value: 'digital-wallet-provider', label: 'Digital Wallet Provider' },
+  { value: 'defi-protocol', label: 'DeFi Protocol' },
+  { value: 'banking-institution', label: 'Banking Institution' },
+  { value: 'fintech-startup', label: 'Fintech Startup' },
+  { value: 'compliance-firm', label: 'Compliance Firm' },
+  { value: 'other', label: 'Other' }
+];
+
+const COUNTRY_CODES = [
+  { code: '+1', country: 'US/CA' },
+  { code: '+44', country: 'UK' },
+  { code: '+49', country: 'DE' },
+  { code: '+33', country: 'FR' },
+  { code: '+34', country: 'ES' },
+  { code: '+39', country: 'IT' },
+  { code: '+31', country: 'NL' },
+  { code: '+41', country: 'CH' },
+  { code: '+46', country: 'SE' },
+  { code: '+47', country: 'NO' },
+  { code: '+45', country: 'DK' },
+  { code: '+358', country: 'FI' },
+  { code: '+81', country: 'JP' },
+  { code: '+82', country: 'KR' },
+  { code: '+65', country: 'SG' },
+  { code: '+852', country: 'HK' },
+  { code: '+971', country: 'AE' },
+  { code: '+972', country: 'IL' },
+];
+
+const AuthForm: React.FC<AuthFormProps> = ({ mode, onToggleMode }) => {
+  const { signIn, signUp } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Form fields
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [jobTitle, setJobTitle] = useState('');
+  const [countryCode, setCountryCode] = useState('+1');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [country, setCountry] = useState('');
+  const [businessType, setBusinessType] = useState('');
+  const [website, setWebsite] = useState('');
 
-  useEffect(() => {
-    if (user) {
-      // Redirect to app page after successful authentication
-      navigate('/dashboard');
-    }
-  }, [user, navigate]);
+  const validateWebsite = (url: string) => {
+    if (!url) return true; // Optional field
+    return url.startsWith('https://') || url.startsWith('http://www.');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-
-    if (!email || !password) {
-      toast({
-        title: "Missing Fields",
-        description: "Please fill in all fields.",
-        variant: "destructive"
-      });
-      setLoading(false);
-      return;
+    
+    if (mode === 'signup') {
+      if (password !== confirmPassword) {
+        toast.error('Passwords do not match');
+        return;
+      }
+      
+      if (website && !validateWebsite(website)) {
+        toast.error('Website must start with https:// or www.');
+        return;
+      }
+      
+      if (!firstName || !lastName || !companyName || !jobTitle || !phoneNumber || !country || !businessType) {
+        toast.error('Please fill in all required fields');
+        return;
+      }
     }
 
+    setLoading(true);
+    
     try {
-      if (isSignUp) {
-        await signUp(email, password);
-        toast({
-          title: "Sign Up Successful",
-          description: "You have successfully signed up. Redirecting...",
-        });
+      if (mode === 'signin') {
+        const { error } = await signIn(email, password);
+        if (error) throw error;
+        toast.success('Welcome back!');
       } else {
-        await signIn(email, password);
-        toast({
-          title: "Sign In Successful",
-          description: "You have successfully signed in. Redirecting...",
+        const fullPhone = `${countryCode}${phoneNumber}`;
+        const { error } = await signUp(email, password, {
+          first_name: firstName,
+          last_name: lastName,
+          company_name: companyName,
+          job_title: jobTitle,
+          phone: fullPhone,
+          country: country,
+          business_type: businessType,
+          website: website || null
         });
+        if (error) throw error;
+        toast.success('Account created successfully! Please check your email to verify your account.');
       }
     } catch (error: any) {
-      console.error("Authentication error:", error);
-      toast({
-        title: "Authentication Failed",
-        description: error.message || "Failed to authenticate. Please check your credentials and try again.",
-        variant: "destructive"
-      });
+      console.error('Auth error:', error);
+      toast.error(error.message || 'An error occurred');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleToggle = () => {
-    setIsSignUp(!isSignUp);
-    setEmail('');
-    setPassword('');
-    setName('');
-  };
-
   return (
-    <StyledWrapper>
-      <div className="wrapper">
-        <div className="card-switch">
-          <label className="switch">
-            <input 
-              type="checkbox" 
-              className="toggle" 
-              checked={isSignUp}
-              onChange={handleToggle}
-            />
-            <span className="slider" />
-            <span className="card-side" />
-            <div className="flip-card__inner">
-              <div className="flip-card__front">
-                <div className="title">Log in</div>
-                <form className="flip-card__form" onSubmit={handleSubmit}>
-                  <input 
-                    className="flip-card__input" 
-                    name="email" 
-                    placeholder="Email" 
-                    type="email" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+    <Card className="w-full max-w-2xl mx-auto">
+      <CardHeader className="text-center">
+        <CardTitle className="text-2xl font-bold">
+          {mode === 'signin' ? 'Welcome Back' : 'Create Account'}
+        </CardTitle>
+        <CardDescription>
+          {mode === 'signin' 
+            ? 'Sign in to access your API dashboard'
+            : 'Get started with our AML-compliant relay API'
+          }
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {mode === 'signup' && (
+            <>
+              {/* Name Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName" className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    First Name *
+                  </Label>
+                  <Input
+                    id="firstName"
+                    type="text"
+                    placeholder="Enter your first name"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
                     required
                   />
-                  <input 
-                    className="flip-card__input" 
-                    name="password" 
-                    placeholder="Password" 
-                    type="password" 
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName" className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Last Name *
+                  </Label>
+                  <Input
+                    id="lastName"
+                    type="text"
+                    placeholder="Enter your last name"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
                     required
                   />
-                  <button className="flip-card__btn" type="submit" disabled={loading}>
-                    {loading ? "Loading..." : "Let's go!"}
-                  </button>
-                </form>
+                </div>
               </div>
-              <div className="flip-card__back">
-                <div className="title">Sign up</div>
-                <form className="flip-card__form" onSubmit={handleSubmit}>
-                  <input 
-                    className="flip-card__input" 
-                    placeholder="Name" 
-                    type="text" 
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                  <input 
-                    className="flip-card__input" 
-                    name="email" 
-                    placeholder="Email" 
-                    type="email" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+
+              {/* Company & Job Title Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="companyName" className="flex items-center gap-2">
+                    <Building className="h-4 w-4" />
+                    Company Name *
+                  </Label>
+                  <Input
+                    id="companyName"
+                    type="text"
+                    placeholder="Enter your company name"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
                     required
                   />
-                  <input 
-                    className="flip-card__input" 
-                    name="password" 
-                    placeholder="Password" 
-                    type="password" 
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="jobTitle" className="flex items-center gap-2">
+                    <Briefcase className="h-4 w-4" />
+                    Job Title *
+                  </Label>
+                  <Input
+                    id="jobTitle"
+                    type="text"
+                    placeholder="Enter your job title"
+                    value={jobTitle}
+                    onChange={(e) => setJobTitle(e.target.value)}
                     required
                   />
-                  <button className="flip-card__btn" type="submit" disabled={loading}>
-                    {loading ? "Loading..." : "Confirm!"}
-                  </button>
-                </form>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Email Row */}
+          <div className="space-y-2">
+            <Label htmlFor="email" className="flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              Email Address *
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="Enter your email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+
+          {mode === 'signup' && (
+            <>
+              {/* Phone Number Row */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Phone className="h-4 w-4" />
+                  Phone Number *
+                </Label>
+                <div className="flex gap-2">
+                  <Select value={countryCode} onValueChange={setCountryCode}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COUNTRY_CODES.map((item) => (
+                        <SelectItem key={item.code} value={item.code}>
+                          {item.code} ({item.country})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="tel"
+                    placeholder="Phone number"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    className="flex-1"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Country & Business Type Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Country *
+                  </Label>
+                  <Select value={country} onValueChange={setCountry} required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select your country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COUNTRIES.map((country) => (
+                        <SelectItem key={country.code} value={country.code}>
+                          {country.flag} {country.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Building className="h-4 w-4" />
+                    Business Type *
+                  </Label>
+                  <Select value={businessType} onValueChange={setBusinessType} required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select business type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BUSINESS_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Website Row */}
+              <div className="space-y-2">
+                <Label htmlFor="website" className="flex items-center gap-2">
+                  <Globe className="h-4 w-4" />
+                  Website (Optional)
+                </Label>
+                <Input
+                  id="website"
+                  type="url"
+                  placeholder="https://yourcompany.com or www.yourcompany.com"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Must start with https:// or www.
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* Password Row */}
+          <div className="space-y-2">
+            <Label htmlFor="password" className="flex items-center gap-2">
+              <Lock className="h-4 w-4" />
+              Password *
+            </Label>
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          {mode === 'signup' && (
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword" className="flex items-center gap-2">
+                <Lock className="h-4 w-4" />
+                Confirm Password *
+              </Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  placeholder="Confirm your password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
             </div>
-          </label>
-        </div>   
-      </div>
-    </StyledWrapper>
+          )}
+
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? 'Processing...' : (mode === 'signin' ? 'Sign In' : 'Create Account')}
+          </Button>
+        </form>
+
+        <div className="mt-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            {mode === 'signin' ? "Don't have an account? " : "Already have an account? "}
+            <button
+              type="button"
+              onClick={onToggleMode}
+              className="text-primary hover:underline font-medium"
+            >
+              {mode === 'signin' ? 'Sign up' : 'Sign in'}
+            </button>
+          </p>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
-
-const StyledWrapper = styled.div`
-  .wrapper {
-    --input-focus: #2d8cf0;
-    --font-color: #323232;
-    --font-color-sub: #666;
-    --bg-color: #fff;
-    --bg-color-alt: #666;
-    --main-color: #323232;
-  }
-  /* switch card */
-  .switch {
-    transform: translateY(-200px);
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 30px;
-    width: 50px;
-    height: 20px;
-  }
-
-  .card-side::before {
-    position: absolute;
-    content: 'Log in';
-    left: -70px;
-    top: 0;
-    width: 100px;
-    text-decoration: underline;
-    color: var(--font-color);
-    font-weight: 600;
-  }
-
-  .card-side::after {
-    position: absolute;
-    content: 'Sign up';
-    left: 70px;
-    top: 0;
-    width: 100px;
-    text-decoration: none;
-    color: var(--font-color);
-    font-weight: 600;
-  }
-
-  .toggle {
-    opacity: 0;
-    width: 0;
-    height: 0;
-  }
-
-  .slider {
-    box-sizing: border-box;
-    border-radius: 5px;
-    border: 2px solid var(--main-color);
-    box-shadow: 4px 4px var(--main-color);
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: var(--bg-color);
-    transition: 0.3s;
-  }
-
-  .slider:before {
-    box-sizing: border-box;
-    position: absolute;
-    content: "";
-    height: 20px;
-    width: 20px;
-    border: 2px solid var(--main-color);
-    border-radius: 5px;
-    left: -2px;
-    bottom: 2px;
-    background-color: var(--bg-color);
-    box-shadow: 0 3px 0 var(--main-color);
-    transition: 0.3s;
-  }
-
-  .toggle:checked + .slider {
-    background-color: var(--input-focus);
-  }
-
-  .toggle:checked + .slider:before {
-    transform: translateX(30px);
-  }
-
-  .toggle:checked ~ .card-side:before {
-    text-decoration: none;
-  }
-
-  .toggle:checked ~ .card-side:after {
-    text-decoration: underline;
-  }
-
-  /* card */ 
-
-  .flip-card__inner {
-    width: 300px;
-    height: 350px;
-    position: relative;
-    background-color: transparent;
-    perspective: 1000px;
-    text-align: center;
-    transition: transform 0.8s;
-    transform-style: preserve-3d;
-  }
-
-  .toggle:checked ~ .flip-card__inner {
-    transform: rotateY(180deg);
-  }
-
-  .toggle:checked ~ .flip-card__front {
-    box-shadow: none;
-  }
-
-  .flip-card__front, .flip-card__back {
-    padding: 20px;
-    position: absolute;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    background: lightgrey;
-    gap: 20px;
-    border-radius: 5px;
-    border: 2px solid var(--main-color);
-    box-shadow: 4px 4px var(--main-color);
-  }
-
-  .flip-card__back {
-    width: 100%;
-    transform: rotateY(180deg);
-  }
-
-  .flip-card__form {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-  }
-
-  .title {
-    margin: 20px 0 20px 0;
-    font-size: 25px;
-    font-weight: 900;
-    text-align: center;
-    color: var(--main-color);
-  }
-
-  .flip-card__input {
-    width: 250px;
-    height: 40px;
-    border-radius: 5px;
-    border: 2px solid var(--main-color);
-    background-color: var(--bg-color);
-    box-shadow: 4px 4px var(--main-color);
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--font-color);
-    padding: 5px 10px;
-    outline: none;
-  }
-
-  .flip-card__input::placeholder {
-    color: var(--font-color-sub);
-    opacity: 0.8;
-  }
-
-  .flip-card__input:focus {
-    border: 2px solid var(--input-focus);
-  }
-
-  .flip-card__btn:active, .button-confirm:active {
-    box-shadow: 0px 0px var(--main-color);
-    transform: translate(3px, 3px);
-  }
-
-  .flip-card__btn {
-    margin: 20px 0 20px 0;
-    width: 120px;
-    height: 40px;
-    border-radius: 5px;
-    border: 2px solid var(--main-color);
-    background-color: var(--bg-color);
-    box-shadow: 4px 4px var(--main-color);
-    font-size: 17px;
-    font-weight: 600;
-    color: var(--font-color);
-    cursor: pointer;
-  }
-
-  .flip-card__btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-`;
 
 export default AuthForm;
