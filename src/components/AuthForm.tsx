@@ -22,7 +22,7 @@ const AuthForm = () => {
   const [country, setCountry] = useState('');
   const [businessType, setBusinessType] = useState('');
   const [website, setWebsite] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(true);
   const [loading, setLoading] = useState(false);
   const [isPhoneValid, setIsPhoneValid] = useState(false);
 
@@ -39,33 +39,56 @@ const AuthForm = () => {
     if (!email || !password) {
       toast({
         title: "Missing Fields",
-        description: "Please fill in all fields.",
+        description: "Please fill in all required fields.",
         variant: "destructive"
       });
       setLoading(false);
       return;
     }
 
-    if (isSignUp && password !== confirmPassword) {
-      toast({
-        title: "Password Mismatch",
-        description: "Passwords do not match.",
-        variant: "destructive"
-      });
-      setLoading(false);
-      return;
+    if (isSignUp) {
+      // Additional validation for signup
+      if (!firstName || !lastName || !companyName || !jobTitle || !country || !businessType) {
+        toast({
+          title: "Missing Fields",
+          description: "Please fill in all required fields.",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        toast({
+          title: "Password Mismatch",
+          description: "Passwords do not match.",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (!isPhoneValid) {
+        toast({
+          title: "Invalid Phone Number",
+          description: "Please enter a valid phone number.",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
     }
 
     try {
       if (isSignUp) {
         const metadata = {
-          firstName,
-          lastName,
-          companyName,
-          jobTitle,
+          first_name: firstName,
+          last_name: lastName,
+          company_name: companyName,
+          job_title: jobTitle,
           phone,
           country,
-          businessType,
+          business_type: businessType,
           website
         };
         
@@ -111,7 +134,19 @@ const AuthForm = () => {
     setCountry('');
     setBusinessType('');
     setWebsite('');
+    setIsPhoneValid(false);
   };
+
+  // Check if form is valid for signup
+  const isSignUpFormValid = isSignUp ? (
+    firstName && lastName && companyName && jobTitle && email && 
+    password && confirmPassword && country && businessType && isPhoneValid
+  ) : true;
+
+  // Check if form is valid for signin
+  const isSignInFormValid = !isSignUp ? (email && password) : true;
+
+  const isFormValid = isSignUpFormValid && isSignInFormValid;
 
   return (
     <div
@@ -250,41 +285,7 @@ const AuthForm = () => {
         }
       `}</style>
       
-      {!isSignUp ? (
-        <div className="flip-card__back" role="region" aria-label="Sign in form">
-          <h1 className="title">Sign in</h1>
-          <form onSubmit={handleSubmit}>
-            <div className="row-top">
-              <input
-                type="email"
-                placeholder="Email"
-                className="flip-card__input"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                style={{ maxWidth: 250 }}
-              />
-            </div>
-            <div className="row-top">
-              <input
-                type="password"
-                placeholder="Password"
-                className="flip-card__input"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                style={{ maxWidth: 250 }}
-              />
-            </div>
-            <button type="submit" className="button-confirm" disabled={loading}>
-              {loading ? "Loading..." : "Let's go!"}
-            </button>
-          </form>
-          <div className="signin-signup-link">
-            New user? <span onClick={handleToggle}>Sign up</span>
-          </div>
-        </div>
-      ) : (
+      {isSignUp ? (
         <div className="flip-card__back" role="region" aria-label="Sign up form">
           <h1 className="title">Sign up</h1>
           <form onSubmit={handleSubmit}>
@@ -415,12 +416,54 @@ const AuthForm = () => {
                 style={{ maxWidth: 250 }}
               />
             </div>
-            <button type="submit" className="button-confirm" disabled={loading || !isPhoneValid}>
+            <button 
+              type="submit" 
+              className="button-confirm" 
+              disabled={loading || !isFormValid}
+            >
               {loading ? "Loading..." : "Confirm!"}
             </button>
           </form>
           <div className="signin-signup-link">
             Existing user? <span onClick={handleToggle}>Sign in</span>
+          </div>
+        </div>
+      ) : (
+        <div className="flip-card__back" role="region" aria-label="Sign in form">
+          <h1 className="title">Sign in</h1>
+          <form onSubmit={handleSubmit}>
+            <div className="row-top">
+              <input
+                type="email"
+                placeholder="Email"
+                className="flip-card__input"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                style={{ maxWidth: 250 }}
+              />
+            </div>
+            <div className="row-top">
+              <input
+                type="password"
+                placeholder="Password"
+                className="flip-card__input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                style={{ maxWidth: 250 }}
+              />
+            </div>
+            <button 
+              type="submit" 
+              className="button-confirm" 
+              disabled={loading || !isFormValid}
+            >
+              {loading ? "Loading..." : "Let's go!"}
+            </button>
+          </form>
+          <div className="signin-signup-link">
+            New user? <span onClick={handleToggle}>Sign up</span>
           </div>
         </div>
       )}
