@@ -414,16 +414,6 @@ const AuthForm = () => {
                 required
               />
             </div>
-            <div className="row-top">
-              <input
-                type="url"
-                placeholder="Website (optional)"
-                className="flip-card__input"
-                value={website}
-                onChange={(e) => setWebsite(e.target.value)}
-                style={{ maxWidth: 250 }}
-              />
-            </div>
             <button type="submit" className="button-confirm">
               Confirm!
             </button>
