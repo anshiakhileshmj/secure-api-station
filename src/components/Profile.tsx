@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { User, Building, Globe, Mail } from 'lucide-react';
+import { User, Building, Globe, Mail, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 interface DeveloperProfile {
   partner_id: string;
@@ -18,7 +18,8 @@ interface DeveloperProfile {
 }
 
 const Profile = () => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [developerProfile, setDeveloperProfile] = useState<DeveloperProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -78,6 +79,17 @@ const Profile = () => {
       toast.error('Failed to update profile');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast.success('Signed out successfully');
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast.error('Failed to sign out');
     }
   };
 
@@ -196,6 +208,27 @@ const Profile = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Sign Out Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-destructive">
+            <LogOut className="h-5 w-5" />
+            Account Actions
+          </CardTitle>
+          <CardDescription>Manage your account session</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button 
+            variant="destructive"
+            onClick={handleSignOut}
+            className="flex items-center gap-2"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 };
