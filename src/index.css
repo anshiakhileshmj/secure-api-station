@@ -99,6 +99,31 @@
     animation: float 8s ease-in-out infinite;
     animation-delay: 2s;
   }
+
+  /* Auth Form Flip Card Styles */
+  .toggle:checked + .slider {
+    background-color: hsl(var(--primary));
+  }
+
+  .toggle:checked + .slider:before {
+    transform: translateX(30px);
+  }
+
+  .toggle:checked ~ .card-side:before {
+    text-decoration: none;
+  }
+
+  .toggle:checked ~ .card-side:after {
+    text-decoration: underline;
+  }
+
+  .toggle:checked ~ .flip-card__inner {
+    transform: rotateY(180deg);
+  }
+
+  .toggle:checked ~ .flip-card__front {
+    box-shadow: none;
+  }
 }
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');

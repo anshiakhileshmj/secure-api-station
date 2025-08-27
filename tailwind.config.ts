@@ -1,7 +1,7 @@
 
 import type { Config } from "tailwindcss";
 
-export default {
+const config: Config = {
 	darkMode: ["class"],
 	content: [
 		"./pages/**/*.{ts,tsx}",
@@ -13,10 +13,10 @@ export default {
 	theme: {
 		container: {
 			center: true,
-			padding: '2rem',
+			padding: "2rem",
 			screens: {
-				'2xl': '1400px'
-			}
+				"2xl": "1400px",
+			},
 		},
 		extend: {
 			fontFamily: {
@@ -33,81 +33,80 @@ export default {
 				foreground: 'hsl(var(--foreground))',
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
-					foreground: 'hsl(var(--primary-foreground))'
+					foreground: 'hsl(var(--primary-foreground))',
 				},
 				secondary: {
 					DEFAULT: 'hsl(var(--secondary))',
-					foreground: 'hsl(var(--secondary-foreground))'
+					foreground: 'hsl(var(--secondary-foreground))',
 				},
 				destructive: {
 					DEFAULT: 'hsl(var(--destructive))',
-					foreground: 'hsl(var(--destructive-foreground))'
+					foreground: 'hsl(var(--destructive-foreground))',
 				},
 				muted: {
 					DEFAULT: 'hsl(var(--muted))',
-					foreground: 'hsl(var(--muted-foreground))'
+					foreground: 'hsl(var(--muted-foreground))',
 				},
 				accent: {
 					DEFAULT: 'hsl(var(--accent))',
-					foreground: 'hsl(var(--accent-foreground))'
+					foreground: 'hsl(var(--accent-foreground))',
 				},
 				popover: {
 					DEFAULT: 'hsl(var(--popover))',
-					foreground: 'hsl(var(--popover-foreground))'
+					foreground: 'hsl(var(--popover-foreground))',
 				},
 				card: {
 					DEFAULT: 'hsl(var(--card))',
-					foreground: 'hsl(var(--card-foreground))'
+					foreground: 'hsl(var(--card-foreground))',
 				},
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
-				sm: 'calc(var(--radius) - 4px)'
+				sm: 'calc(var(--radius) - 4px)',
 			},
 			keyframes: {
 				'accordion-down': {
-					from: {
-						height: '0'
-					},
-					to: {
-						height: 'var(--radix-accordion-content-height)'
-					}
+					from: { height: '0' },
+					to: { height: 'var(--radix-accordion-content-height)' },
 				},
 				'accordion-up': {
-					from: {
-						height: 'var(--radix-accordion-content-height)'
-					},
-					to: {
-						height: '0'
-					}
+					from: { height: 'var(--radix-accordion-content-height)' },
+					to: { height: '0' },
 				},
-				'fade-in': {
-					from: {
-						opacity: '0',
-						transform: 'translateY(20px)'
-					},
-					to: {
-						opacity: '1',
-						transform: 'translateY(0)'
-					}
-				},
-				'glow': {
-					'0%, 100%': {
-						boxShadow: '0 0 20px hsl(217 91% 60% / 0.3)'
-					},
-					'50%': {
-						boxShadow: '0 0 40px hsl(217 91% 60% / 0.6)'
-					}
-				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
-				'fade-in': 'fade-in 0.6s ease-out',
-				'glow': 'glow 2s ease-in-out infinite'
-			}
-		}
+			},
+			transformStyle: {
+				'preserve-3d': 'preserve-3d',
+			},
+			backfaceVisibility: {
+				'hidden': 'hidden',
+			},
+			transform: {
+				'rotate-y-180': 'rotateY(180deg)',
+			},
+		},
 	},
-	plugins: [require("tailwindcss-animate")],
-} satisfies Config;
+	plugins: [
+		require("tailwindcss-animate"),
+		function({ addUtilities }: { addUtilities: any }) {
+			const newUtilities = {
+				'.preserve-3d': {
+					'transform-style': 'preserve-3d',
+				},
+				'.backface-hidden': {
+					'backface-visibility': 'hidden',
+				},
+				'.rotate-y-180': {
+					'transform': 'rotateY(180deg)',
+				},
+			}
+			addUtilities(newUtilities)
+		}
+	],
+};
+
+export default config;
