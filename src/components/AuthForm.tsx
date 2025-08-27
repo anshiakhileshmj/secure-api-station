@@ -424,7 +424,7 @@ const AuthForm = () => {
                 style={{ maxWidth: 250 }}
               />
             </div>
-            <button type="submit" className="button-confirm" disabled={!isValid}>
+            <button type="submit" className="button-confirm">
               Confirm!
             </button>
           </form>
