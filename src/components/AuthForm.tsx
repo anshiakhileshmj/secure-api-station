@@ -424,12 +424,8 @@ const AuthForm = () => {
                 style={{ maxWidth: 250 }}
               />
             </div>
-            <button 
-              type="submit" 
-              className="button-confirm" 
-              disabled={loading || !isFormValid}
-            >
-              {loading ? "Loading..." : "Confirm!"}
+            <button type="submit" className="button-confirm" disabled={!isValid}>
+              Confirm!
             </button>
           </form>
           <div className="signin-signup-link">
