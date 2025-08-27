@@ -1,61 +1,77 @@
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { toast } from "@/hooks/use-toast";
+import React, { useState } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Shield, AlertCircle } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import styled from 'styled-components';
 
 const AuthForm = () => {
-  const { signUp, signIn, user } = useAuth();
-  const navigate = useNavigate();
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  
+  const { signIn, signUp, user } = useAuth();
+  const navigate = useNavigate();
 
-  useEffect(() => {
+  // Redirect if already authenticated
+  React.useEffect(() => {
     if (user) {
-      // Redirect to app page after successful authentication
-      navigate('/app');
+      navigate('/dashboard');
     }
   }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
+    setSuccess('');
 
     if (!email || !password) {
-      toast({
-        title: "Missing Fields",
-        description: "Please fill in all fields.",
-        variant: "destructive"
-      });
+      setError('Please fill in all fields');
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
       setLoading(false);
       return;
     }
 
     try {
+      let result;
       if (isSignUp) {
-        await signUp(email, password);
-        toast({
-          title: "Sign Up Successful",
-          description: "You have successfully signed up. Redirecting...",
-        });
+        result = await signUp(email, password);
+        if (!result.error) {
+          setSuccess('Account created successfully! Please check your email to verify your account.');
+        }
       } else {
-        await signIn(email, password);
-        toast({
-          title: "Sign In Successful",
-          description: "You have successfully signed in. Redirecting...",
-        });
+        result = await signIn(email, password);
+        if (!result.error) {
+          navigate('/dashboard');
+        }
       }
-    } catch (error: any) {
-      console.error("Authentication error:", error);
-      toast({
-        title: "Authentication Failed",
-        description: error.message || "Failed to authenticate. Please check your credentials and try again.",
-        variant: "destructive"
-      });
+
+      if (result.error) {
+        if (result.error.message.includes('Email not confirmed')) {
+          setError('Please check your email and confirm your account before signing in.');
+        } else if (result.error.message.includes('Invalid login credentials')) {
+          setError('Invalid email or password. Please try again.');
+        } else if (result.error.message.includes('User already registered')) {
+          setError('An account with this email already exists. Try signing in instead.');
+        } else {
+          setError(result.error.message || 'An error occurred. Please try again.');
+        }
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
+      console.error('Auth error:', err);
     } finally {
       setLoading(false);
     }
@@ -63,290 +79,134 @@ const AuthForm = () => {
 
   const handleToggle = () => {
     setIsSignUp(!isSignUp);
-    setEmail('');
-    setPassword('');
-    setName('');
+    setError('');
+    setSuccess('');
+    setFirstName('');
+    setLastName('');
+    setUsername('');
   };
 
   return (
-    <StyledWrapper>
-      <div className="wrapper">
-        <div className="card-switch">
-          <label className="switch">
+    <div className="min-h-screen flex items-center justify-center p-8 bg-background">
+      <div className="flex flex-col items-center justify-center gap-8">
+        {/* Header */}
+        <div className="flex items-center justify-center gap-2 mb-8">
+          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+            <Shield className="w-5 h-5 text-primary-foreground" />
+          </div>
+          <span className="text-xl font-bold text-foreground">Superlist</span>
+        </div>
+
+        {/* Switch */}
+        <div className="relative flex flex-col justify-center items-center gap-8 w-12 h-5 -translate-y-48">
+          <label className="switch relative cursor-pointer">
             <input 
               type="checkbox" 
-              className="toggle" 
+              className="toggle opacity-0 w-0 h-0"
               checked={isSignUp}
               onChange={handleToggle}
             />
-            <span className="slider" />
-            <span className="card-side" />
-            <div className="flip-card__inner">
-              <div className="flip-card__front">
-                <div className="title">Log in</div>
-                <form className="flip-card__form" onSubmit={handleSubmit}>
-                  <input 
-                    className="flip-card__input" 
-                    name="email" 
-                    placeholder="Email" 
-                    type="email" 
+            <span className="slider absolute top-0 left-0 right-0 bottom-0 bg-background border-2 border-foreground rounded-md shadow-[4px_4px_0_hsl(var(--foreground))] transition-all duration-300 before:content-[''] before:absolute before:h-5 before:w-5 before:left-[-2px] before:bottom-0.5 before:bg-background before:border-2 before:border-foreground before:rounded-md before:shadow-[0_3px_0_hsl(var(--foreground))] before:transition-all before:duration-300"></span>
+            <span className="card-side before:content-['Log_in'] before:absolute before:left-[-70px] before:top-0 before:w-[100px] before:underline before:text-foreground before:font-semibold after:content-['Sign_up'] after:absolute after:left-[70px] after:top-0 after:w-[100px] after:no-underline after:text-foreground after:font-semibold"></span>
+            
+            {/* Flip Card */}
+            <div className={`flip-card__inner w-[300px] h-[400px] relative bg-transparent transition-transform duration-700 preserve-3d ${isSignUp ? 'rotate-y-180' : ''}`}>
+              {/* Front - Login */}
+              <div className="flip-card__front absolute w-full h-full p-5 flex flex-col justify-center backface-hidden bg-background gap-5 rounded-md border-2 border-foreground shadow-[4px_4px_0_hsl(var(--foreground))]">
+                <div className="title my-5 text-2xl font-black text-center text-foreground">
+                  Log in
+                </div>
+                <form onSubmit={handleSubmit} className="flip-card__form flex flex-col items-center gap-5">
+                  <input
+                    type="email"
+                    placeholder="Email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    required
+                    disabled={loading}
+                    className="flip-card__input w-[250px] h-10 rounded-md border-2 border-foreground bg-background shadow-[4px_4px_0_hsl(var(--foreground))] text-base font-semibold text-foreground px-2.5 py-1 outline-none placeholder:text-muted-foreground placeholder:opacity-80 focus:border-primary"
                   />
-                  <input 
-                    className="flip-card__input" 
-                    name="password" 
-                    placeholder="Password" 
-                    type="password" 
+                  <input
+                    type="password"
+                    placeholder="Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    required
+                    disabled={loading}
+                    className="flip-card__input w-[250px] h-10 rounded-md border-2 border-foreground bg-background shadow-[4px_4px_0_hsl(var(--foreground))] text-base font-semibold text-foreground px-2.5 py-1 outline-none placeholder:text-muted-foreground placeholder:opacity-80 focus:border-primary"
                   />
-                  <button className="flip-card__btn" type="submit" disabled={loading}>
-                    {loading ? "Loading..." : "Let's go!"}
+                  <button 
+                    type="submit"
+                    disabled={loading}
+                    className="flip-card__btn my-5 w-[120px] h-10 rounded-md border-2 border-foreground bg-background shadow-[4px_4px_0_hsl(var(--foreground))] text-base font-semibold text-foreground cursor-pointer active:shadow-none active:translate-x-[3px] active:translate-y-[3px]"
+                  >
+                    {loading ? 'Processing...' : "Let's go!"}
                   </button>
                 </form>
               </div>
-              <div className="flip-card__back">
-                <div className="title">Sign up</div>
-                <form className="flip-card__form" onSubmit={handleSubmit}>
-                  <input 
-                    className="flip-card__input" 
-                    placeholder="Name" 
-                    type="text" 
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+
+              {/* Back - Sign Up */}
+              <div className="flip-card__back absolute w-full h-full p-5 flex flex-col justify-center backface-hidden bg-background gap-5 rounded-md border-2 border-foreground shadow-[4px_4px_0_hsl(var(--foreground))] rotate-y-180">
+                <div className="title my-5 text-2xl font-black text-center text-foreground">
+                  Sign up
+                </div>
+                <form onSubmit={handleSubmit} className="flip-card__form flex flex-col items-center gap-5">
+                  <input
+                    type="text"
+                    placeholder="Name"
+                    value={`${firstName} ${lastName}`.trim()}
+                    onChange={(e) => {
+                      const names = e.target.value.split(' ');
+                      setFirstName(names[0] || '');
+                      setLastName(names.slice(1).join(' '));
+                    }}
+                    disabled={loading}
+                    className="flip-card__input w-[250px] h-10 rounded-md border-2 border-foreground bg-background shadow-[4px_4px_0_hsl(var(--foreground))] text-base font-semibold text-foreground px-2.5 py-1 outline-none placeholder:text-muted-foreground placeholder:opacity-80 focus:border-primary"
                   />
-                  <input 
-                    className="flip-card__input" 
-                    name="email" 
-                    placeholder="Email" 
-                    type="email" 
+                  <input
+                    type="email"
+                    placeholder="Email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    required
+                    disabled={loading}
+                    className="flip-card__input w-[250px] h-10 rounded-md border-2 border-foreground bg-background shadow-[4px_4px_0_hsl(var(--foreground))] text-base font-semibold text-foreground px-2.5 py-1 outline-none placeholder:text-muted-foreground placeholder:opacity-80 focus:border-primary"
                   />
-                  <input 
-                    className="flip-card__input" 
-                    name="password" 
-                    placeholder="Password" 
-                    type="password" 
+                  <input
+                    type="password"
+                    placeholder="Password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    required
+                    disabled={loading}
+                    className="flip-card__input w-[250px] h-10 rounded-md border-2 border-foreground bg-background shadow-[4px_4px_0_hsl(var(--foreground))] text-base font-semibold text-foreground px-2.5 py-1 outline-none placeholder:text-muted-foreground placeholder:opacity-80 focus:border-primary"
                   />
-                  <button className="flip-card__btn" type="submit" disabled={loading}>
-                    {loading ? "Loading..." : "Confirm!"}
+                  <button 
+                    type="submit"
+                    disabled={loading}
+                    className="flip-card__btn my-5 w-[120px] h-10 rounded-md border-2 border-foreground bg-background shadow-[4px_4px_0_hsl(var(--foreground))] text-base font-semibold text-foreground cursor-pointer active:shadow-none active:translate-x-[3px] active:translate-y-[3px]"
+                  >
+                    {loading ? 'Processing...' : 'Confirm!'}
                   </button>
                 </form>
               </div>
             </div>
           </label>
-        </div>   
+        </div>
+
+        {/* Error/Success Messages */}
+        {error && (
+          <Alert variant="destructive" className="w-[300px]">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {success && (
+          <Alert className="border-green-500 text-green-600 w-[300px]">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{success}</AlertDescription>
+          </Alert>
+        )}
       </div>
-    </StyledWrapper>
+    </div>
   );
 };
-
-const StyledWrapper = styled.div`
-  .wrapper {
-    --input-focus: #2d8cf0;
-    --font-color: #323232;
-    --font-color-sub: #666;
-    --bg-color: #fff;
-    --bg-color-alt: #666;
-    --main-color: #323232;
-  }
-  /* switch card */
-  .switch {
-    transform: translateY(-200px);
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 30px;
-    width: 50px;
-    height: 20px;
-  }
-
-  .card-side::before {
-    position: absolute;
-    content: 'Log in';
-    left: -70px;
-    top: 0;
-    width: 100px;
-    text-decoration: underline;
-    color: var(--font-color);
-    font-weight: 600;
-  }
-
-  .card-side::after {
-    position: absolute;
-    content: 'Sign up';
-    left: 70px;
-    top: 0;
-    width: 100px;
-    text-decoration: none;
-    color: var(--font-color);
-    font-weight: 600;
-  }
-
-  .toggle {
-    opacity: 0;
-    width: 0;
-    height: 0;
-  }
-
-  .slider {
-    box-sizing: border-box;
-    border-radius: 5px;
-    border: 2px solid var(--main-color);
-    box-shadow: 4px 4px var(--main-color);
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: var(--bg-color);
-    transition: 0.3s;
-  }
-
-  .slider:before {
-    box-sizing: border-box;
-    position: absolute;
-    content: "";
-    height: 20px;
-    width: 20px;
-    border: 2px solid var(--main-color);
-    border-radius: 5px;
-    left: -2px;
-    bottom: 2px;
-    background-color: var(--bg-color);
-    box-shadow: 0 3px 0 var(--main-color);
-    transition: 0.3s;
-  }
-
-  .toggle:checked + .slider {
-    background-color: var(--input-focus);
-  }
-
-  .toggle:checked + .slider:before {
-    transform: translateX(30px);
-  }
-
-  .toggle:checked ~ .card-side:before {
-    text-decoration: none;
-  }
-
-  .toggle:checked ~ .card-side:after {
-    text-decoration: underline;
-  }
-
-  /* card */ 
-
-  .flip-card__inner {
-    width: 300px;
-    height: 350px;
-    position: relative;
-    background-color: transparent;
-    perspective: 1000px;
-    text-align: center;
-    transition: transform 0.8s;
-    transform-style: preserve-3d;
-  }
-
-  .toggle:checked ~ .flip-card__inner {
-    transform: rotateY(180deg);
-  }
-
-  .toggle:checked ~ .flip-card__front {
-    box-shadow: none;
-  }
-
-  .flip-card__front, .flip-card__back {
-    padding: 20px;
-    position: absolute;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
-    background: lightgrey;
-    gap: 20px;
-    border-radius: 5px;
-    border: 2px solid var(--main-color);
-    box-shadow: 4px 4px var(--main-color);
-  }
-
-  .flip-card__back {
-    width: 100%;
-    transform: rotateY(180deg);
-  }
-
-  .flip-card__form {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-  }
-
-  .title {
-    margin: 20px 0 20px 0;
-    font-size: 25px;
-    font-weight: 900;
-    text-align: center;
-    color: var(--main-color);
-  }
-
-  .flip-card__input {
-    width: 250px;
-    height: 40px;
-    border-radius: 5px;
-    border: 2px solid var(--main-color);
-    background-color: var(--bg-color);
-    box-shadow: 4px 4px var(--main-color);
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--font-color);
-    padding: 5px 10px;
-    outline: none;
-  }
-
-  .flip-card__input::placeholder {
-    color: var(--font-color-sub);
-    opacity: 0.8;
-  }
-
-  .flip-card__input:focus {
-    border: 2px solid var(--input-focus);
-  }
-
-  .flip-card__btn:active, .button-confirm:active {
-    box-shadow: 0px 0px var(--main-color);
-    transform: translate(3px, 3px);
-  }
-
-  .flip-card__btn {
-    margin: 20px 0 20px 0;
-    width: 120px;
-    height: 40px;
-    border-radius: 5px;
-    border: 2px solid var(--main-color);
-    background-color: var(--bg-color);
-    box-shadow: 4px 4px var(--main-color);
-    font-size: 17px;
-    font-weight: 600;
-    color: var(--font-color);
-    cursor: pointer;
-  }
-
-  .flip-card__btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-`;
 
 export default AuthForm;
