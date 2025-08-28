@@ -1,8 +1,8 @@
 
-import LandingPage from '@/components/LandingPage';
+import Hero from '@/components/Hero';
 
 const Index = () => {
-  return <LandingPage />;
+  return <Hero />;
 };
 
 export default Index;
