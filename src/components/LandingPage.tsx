@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import './main.css';
+import 'public/landing-page/main.css';
 
 function App(): JSX.Element {
   useEffect(() => {
