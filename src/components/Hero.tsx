@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import { Shield, Zap, Globe, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -9,58 +10,58 @@ const Hero = () => {
   const { user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-slate-100 flex flex-col">
-      {/* Navigation */}
-      <nav className="flex items-center justify-between px-8 py-6">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center">
-            <div className="w-4 h-4 bg-white rounded-full"></div>
-          </div>
-          <span className="text-xl font-semibold text-slate-800">Skytelco</span>
-        </div>
+    <div className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Background elements */}
+      <div className="absolute inset-0">
+        {/* Central light beam effect */}
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
+        <div className="absolute top-32 left-1/2 transform -translate-x-1/2 w-64 h-64 bg-blue-400/10 rounded-full blur-2xl"></div>
         
-        <div className="hidden md:flex items-center space-x-8">
-          <a href="#" className="text-slate-600 hover:text-slate-800">Home</a>
-          <a href="#" className="text-slate-600 hover:text-slate-800">Recharge</a>
-          <a href="#" className="text-slate-600 hover:text-slate-800">Plans & Offer</a>
-          <a href="#" className="text-slate-600 hover:text-slate-800">Service</a>
-          <a href="#" className="text-slate-600 hover:text-slate-800">Store</a>
-        </div>
+        {/* Floating particles */}
+        <div className="absolute top-20 left-10 w-2 h-2 bg-white/20 rounded-full animate-pulse"></div>
+        <div className="absolute top-40 right-20 w-1 h-1 bg-blue-300/40 rounded-full animate-pulse" style={{
+          animationDelay: '1s'
+        }}></div>
+        <div className="absolute bottom-32 left-20 w-1.5 h-1.5 bg-white/30 rounded-full animate-pulse" style={{
+          animationDelay: '2s'
+        }}></div>
+        <div className="absolute top-60 left-1/3 w-1 h-1 bg-blue-200/30 rounded-full animate-pulse" style={{
+          animationDelay: '0.5s'
+        }}></div>
+        <div className="absolute bottom-40 right-1/4 w-2 h-2 bg-white/20 rounded-full animate-pulse" style={{
+          animationDelay: '1.5s'
+        }}></div>
+      </div>
 
-        <div className="flex items-center space-x-4">
-          <button className="p-2">
-            <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </button>
-          <button className="p-2">
-            <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-          </button>
-        </div>
-      </nav>
-
-      {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center px-4">
-        <div className="text-center max-w-4xl mx-auto">
-          <h1 className="text-5xl md:text-7xl font-bold text-slate-800 leading-tight mb-6">
-            Stay Connected
+      <div className="relative z-10 max-w-6xl mx-auto text-center space-y-12">
+        <div className="space-y-8">
+          <h1 className="text-6xl md:text-8xl font-light leading-tight text-white tracking-wide">
+            Secure Blockchain APIs
             <br />
-            Anywhere <span className="text-teal-600">Anytime</span>
+            <span className="text-5xl md:text-7xl">for Developers</span>
           </h1>
           
-          <p className="text-lg md:text-xl text-slate-600 mb-8 max-w-2xl mx-auto">
-            Stay connected with fast, reliable coverage—wherever life takes you, anytime, 
-            anywhere, without interruptions.
+          <p className="text-xl md:text-2xl text-gray-300 max-w-4xl mx-auto leading-relaxed font-light">
+            Access comprehensive blockchain data, wallet risk scoring, and transaction monitoring 
+            with the most secure and user-friendly API platform.
           </p>
+        </div>
 
+        <div className="flex flex-col sm:flex-row gap-6 justify-center items-center pt-8">
           <Button 
-            className="bg-teal-700 hover:bg-teal-800 text-white text-lg px-8 py-4 h-auto rounded-full font-medium transition-all duration-300" 
-            onClick={() => navigate(user ? '/dashboard' : '/auth')}
+            className="bg-white text-black hover:bg-gray-100 text-lg px-10 py-4 h-auto rounded-full font-medium transition-all duration-300" 
+            onClick={() => navigate(user ? '/dashboard' : '/auth')} 
+            size="lg"
           >
-            {user ? 'Go to Dashboard' : 'Download Mobile App!'}
+            {user ? 'Go to Dashboard' : 'Launch App'}
           </Button>
+          
+          <button 
+            className="relative overflow-hidden px-8 py-4 border-2 border-zinc-700 bg-zinc-900 text-white text-lg font-bold rounded-full transition-all duration-400 hover:border-zinc-600 hover:bg-zinc-800 before:content-[''] before:absolute before:top-0 before:left-0 before:w-full before:h-full before:bg-gradient-radial before:from-white/25 before:to-transparent before:scale-0 before:transition-transform before:duration-500 hover:before:scale-[4]"
+            onClick={() => navigate('/docs')}
+          >
+            See Pricing
+          </button>
         </div>
       </div>
     </div>
