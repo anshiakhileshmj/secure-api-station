@@ -5,7 +5,7 @@ const LandingPage = () => {
   return (
     <div className="page-wrapper">
       {/* General Styles */}
-      <style jsx>{`
+      <style>{`
         html { font-size: 1rem; }
 
         @media screen and (min-width: 240px) {
