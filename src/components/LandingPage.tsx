@@ -63,7 +63,7 @@ const LandingPage = () => {
 
         <div className="header">
           <div className="header-logo">
-            <img src="/landing page/aml_logo.png" loading="lazy" alt="AML Logo" className="image-contain" />
+            <img src="/landing-page/aml_logo.png" loading="lazy" alt="AML Logo" className="image-contain" />
           </div>
         </div>
 
@@ -76,10 +76,10 @@ const LandingPage = () => {
                   <div className="hero-bg-images">
                     <div className="hero-bg-image s1">
                       <img 
-                        src="/landing page/main-bg.png" 
+                        src="/landing-page/main-bg.png" 
                         loading="lazy" 
                         sizes="100vw" 
-                        srcSet="/landing page/500.png 500w, /landing page/800.png 800w, /landing page/1080.png 1080w, /landing page/1600.png 1600w, /landing page/2000.png 2000w, /landing page/main-bg.png 2400w" 
+                        srcSet="/landing-page/500.png 500w, /landing-page/800.png 800w, /landing-page/1080.png 1080w, /landing-page/1600.png 1600w, /landing-page/2000.png 2000w, /landing-page/main-bg.png 2400w" 
                         alt="Background" 
                         className="image-contain" 
                       />
@@ -87,45 +87,45 @@ const LandingPage = () => {
                     <div className="hero-bg-image s2">
                       <img 
                         className="image-contain" 
-                        src="/landing page/usdc.png" 
+                        src="/landing-page/usdc.png" 
                         alt="USDC" 
                         data-levitation="1" 
                         sizes="100vw" 
                         loading="lazy" 
-                        srcSet="/landing page/usdc-p-500.png 500w, /landing page/usdc-p-800.png 800w, /landing page/usdc-p-1080.png 1080w, /landing page/usdc-p-1600.png 1600w, /landing page/usdc-p-2000.png 2000w, /landing page/usdc.png 2400w" 
+                        srcSet="/landing-page/usdc-p-500.png 500w, /landing-page/usdc-p-800.png 800w, /landing-page/usdc-p-1080.png 1080w, /landing-page/usdc-p-1600.png 1600w, /landing-page/usdc-p-2000.png 2000w, /landing-page/usdc.png 2400w" 
                       />
                     </div>
                     <div className="hero-bg-image s3">
                       <img 
                         className="image-contain" 
-                        src="/landing page/btc.png" 
+                        src="/landing-page/btc.png" 
                         alt="Bitcoin" 
                         data-levitation="2" 
                         sizes="100vw" 
                         loading="lazy" 
-                        srcSet="/landing page/btc-p-500.png 500w, /landing page/btc-p-800.png 800w, /landing page/btc-p-1080.png 1080w, /landing page/btc-p-1600.png 1600w, /landing page/btc-p-2000.png 2000w, /landing page/btc.png 2400w" 
+                        srcSet="/landing-page/btc-p-500.png 500w, /landing-page/btc-p-800.png 800w, /landing-page/btc-p-1080.png 1080w, /landing-page/btc-p-1600.png 1600w, /landing-page/btc-p-2000.png 2000w, /landing-page/btc.png 2400w" 
                       />
                     </div>
                     <div className="hero-bg-image s4">
                       <img 
                         className="image-contain" 
-                        src="/landing page/tether.png" 
+                        src="/landing-page/tether.png" 
                         alt="Tether" 
                         data-levitation="1" 
                         sizes="100vw" 
                         loading="lazy" 
-                        srcSet="/landing page/tether-p-500.png 500w, /landing page/tether-p-800.png 800w, /landing page/tether-p-1080.png 1080w, /landing page/tether-p-1600.png 1600w, /landing page/tether-p-2000.png 2000w, /landing page/tether.png 2400w" 
+                        srcSet="/landing-page/tether-p-500.png 500w, /landing-page/tether-p-800.png 800w, /landing-page/tether-p-1080.png 1080w, /landing-page/tether-p-1600.png 1600w, /landing-page/tether-p-2000.png 2000w, /landing-page/tether.png 2400w" 
                       />
                     </div>
                     <div className="hero-bg-image s5">
                       <img 
                         className="image-contain" 
-                        src="/landing page/eth.png" 
+                        src="/landing-page/eth.png" 
                         alt="Ethereum" 
                         data-levitation="2" 
                         sizes="100vw" 
                         loading="lazy" 
-                        srcSet="/landing page/eth-p-500.png 500w, /landing page/eth-p-800.png 800w, /landing page/eth-p-1080.png 1080w, /landing page/eth-p-1600.png 1600w, /landing page/eth-p-2000.png 2000w, /landing page/eth.png 2400w" 
+                        srcSet="/landing-page/eth-p-500.png 500w, /landing-page/eth-p-800.png 800w, /landing-page/eth-p-1080.png 1080w, /landing-page/eth-p-1600.png 1600w, /landing-page/eth-p-2000.png 2000w, /landing-page/eth.png 2400w" 
                       />
                     </div>
                   </div>
