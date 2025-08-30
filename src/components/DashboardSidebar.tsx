@@ -10,7 +10,8 @@ import {
   Moon, 
   LogOut,
   Building2,
-  ChevronLeft
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -48,7 +49,7 @@ const DashboardSidebar = ({ activeSection, onSectionChange, isCollapsed, onToggl
   };
 
   return (
-    <div className={`h-screen bg-gray-50 border-r border-gray-200 flex flex-col transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'}`}>
+    <div className={`h-screen bg-gray-50 border-r border-gray-200 flex flex-col transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} relative`}>
       {/* Header */}
       <div className={`${isCollapsed ? 'p-2' : 'p-4'} border-b border-gray-200`}>
         <div className="flex items-center justify-between">
@@ -76,18 +77,16 @@ const DashboardSidebar = ({ activeSection, onSectionChange, isCollapsed, onToggl
         </div>
       </div>
 
-      {/* Collapse button when collapsed - positioned at top right */}
+      {/* Expand button when collapsed - positioned at top right of sidebar */}
       {isCollapsed && (
-        <div className="absolute top-4 -right-3 z-10">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onToggleCollapse}
-            className="p-1 h-6 w-6 rounded-full bg-white border-gray-300 shadow-sm"
-          >
-            <ChevronLeft className="w-3 h-3 rotate-180" />
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onToggleCollapse}
+          className="absolute top-4 right-2 p-1 h-6 w-6 z-10 hover:bg-gray-100"
+        >
+          <ChevronRight className="w-3 h-3" />
+        </Button>
       )}
 
       {/* Navigation */}
