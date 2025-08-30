@@ -61,6 +61,7 @@ interface DeveloperProfile {
 const Dashboard = () => {
   const { user } = useAuth();
   const [activeSection, setActiveSection] = useState('overview');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [developerProfile, setDeveloperProfile] = useState<DeveloperProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -77,6 +78,10 @@ const Dashboard = () => {
       fetchApiKeys();
     }
   }, [user]);
+
+  const handleToggleCollapse = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
+  };
 
   const fetchDeveloperProfile = async () => {
     try {
@@ -536,7 +541,12 @@ const Dashboard = () => {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <DashboardSidebar activeSection={activeSection} onSectionChange={setActiveSection} />
+      <DashboardSidebar 
+        activeSection={activeSection} 
+        onSectionChange={setActiveSection}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={handleToggleCollapse}
+      />
       
       <div className="flex-1 overflow-auto">
         <div className="p-8">
