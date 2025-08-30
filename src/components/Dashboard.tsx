@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Copy, Eye, EyeOff, Trash2, Plus, Edit, RotateCw } from 'lucide-react';
 import { toast } from 'sonner';
-import Profile from './Profile';
+import ProfileSettings from './ProfileSettings';
 import DashboardSidebar from './DashboardSidebar';
 import {
   Table,
@@ -519,7 +519,7 @@ const Dashboard = () => {
       case 'keys':
         return renderApiKeys();
       case 'profile':
-        return <Profile />;
+        return <ProfileSettings />;
       case 'settings':
         return (
           <div className="space-y-6">
