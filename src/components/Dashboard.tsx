@@ -2,22 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Copy, Eye, EyeOff, Trash2, Plus, Edit, RotateCw } from 'lucide-react';
 import { toast } from 'sonner';
 import Profile from './Profile';
 import DashboardSidebar from './DashboardSidebar';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import DashboardContent from './DashboardContent';
+import ApiKeysContent from './ApiKeysContent';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -68,7 +59,6 @@ const Dashboard = () => {
   const [creating, setCreating] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [keyToDelete, setKeyToDelete] = useState<ApiKey | null>(null);
 
@@ -180,21 +170,6 @@ const Dashboard = () => {
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success(`${label} copied to clipboard!`);
-  };
-
-  const toggleKeyVisibility = (keyId: string) => {
-    const newVisible = new Set(visibleKeys);
-    if (newVisible.has(keyId)) {
-      newVisible.delete(keyId);
-    } else {
-      newVisible.add(keyId);
-    }
-    setVisibleKeys(newVisible);
-  };
-
   const toggleKeyStatus = async (keyId: string, currentStatus: boolean) => {
     try {
       const { error } = await supabase
@@ -266,22 +241,6 @@ const Dashboard = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
-
-  const maskApiKey = (key: string) => {
-    if (key.length <= 8) return key;
-    const prefix = key.substring(0, 3);
-    const suffix = key.substring(key.length - 4);
-    const masked = '*'.repeat(key.length - 7);
-    return `${prefix}${masked}${suffix}`;
-  };
-
   if (loading) {
     return (
       <div className="flex h-screen">
@@ -297,245 +256,41 @@ const Dashboard = () => {
     );
   }
 
-  const renderOverview = () => (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-1">Monitor your AML-compliant transaction relay service</p>
-      </div>
-
-      {/* API Endpoints Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Deployed Relay API</CardTitle>
-          <CardDescription>Your AML-compliant transaction relay service is live</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Base URL</Label>
-            <div className="flex items-center gap-2">
-              <Input 
-                value="https://resumeak.onrender.com" 
-                readOnly 
-                className="font-mono text-sm"
-              />
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => copyToClipboard("https://resumeak.onrender.com", "Base URL")}
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Check Endpoint</Label>
-              <code className="block p-2 bg-muted rounded text-sm">
-                POST /v1/check
-              </code>
-              <p className="text-xs text-muted-foreground">
-                Pre-flight AML check without transaction execution
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label>Relay Endpoint</Label>
-              <code className="block p-2 bg-muted rounded text-sm">
-                POST /v1/relay
-              </code>
-              <p className="text-xs text-muted-foreground">
-                Execute transaction through AML-compliant relay
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">API Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm">Online</span>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Active API Keys</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <span className="text-2xl font-bold">{apiKeys.filter(k => k.is_active).length}</span>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Rate Limit</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <span className="text-sm">60 req/min per key</span>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-
-  const renderApiKeys = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">API Keys</h1>
-          <p className="text-gray-600 mt-1">Manage your production API keys for authentication</p>
-        </div>
-        <Button onClick={() => setShowCreateDialog(true)} className="bg-emerald-600 hover:bg-emerald-700">
-          <Plus className="h-4 w-4 mr-2" />
-          Create API Key
-        </Button>
-      </div>
-
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-gray-50">
-                <TableHead className="font-medium text-gray-700">Name</TableHead>
-                <TableHead className="font-medium text-gray-700">Status</TableHead>
-                <TableHead className="font-medium text-gray-700">Created</TableHead>
-                <TableHead className="font-medium text-gray-700">Last used</TableHead>
-                <TableHead className="font-medium text-gray-700">Enable/Disable</TableHead>
-                <TableHead className="font-medium text-gray-700">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {apiKeys.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                    No API keys found. Create your first API key to get started.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                apiKeys.map((apiKey) => (
-                  <TableRow key={apiKey.id} className="hover:bg-gray-50">
-                    <TableCell>
-                      <div className="space-y-2">
-                        <div className="font-medium text-gray-900">{apiKey.name}</div>
-                        <div className="flex items-center gap-2">
-                          <code className="text-sm bg-gray-100 px-2 py-1 rounded font-mono">
-                            {visibleKeys.has(apiKey.id) ? apiKey.key : maskApiKey(apiKey.key)}
-                          </code>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyToClipboard(apiKey.key, "API key")}
-                            className="h-7 w-7 p-0"
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleKeyVisibility(apiKey.id)}
-                            className="h-7 w-7 p-0"
-                          >
-                            {visibleKeys.has(apiKey.id) ? (
-                              <EyeOff className="h-3 w-3" />
-                            ) : (
-                              <Eye className="h-3 w-3" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => rotateApiKey(apiKey.id)}
-                            className="h-7 w-7 p-0"
-                          >
-                            <RotateCw className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={apiKey.is_active ? "default" : "secondary"}
-                        className={apiKey.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}
-                      >
-                        {apiKey.is_active ? "Active" : "Disabled"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-gray-600">
-                      {formatDate(apiKey.created_at)}
-                    </TableCell>
-                    <TableCell className="text-gray-600">
-                      {apiKey.last_used_at ? formatDate(apiKey.last_used_at) : "Never"}
-                    </TableCell>
-                    <TableCell>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="sr-only peer"
-                          checked={apiKey.is_active}
-                          onChange={() => toggleKeyStatus(apiKey.id, apiKey.is_active)}
-                        />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                      </label>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteClick(apiKey)}
-                          className="h-8 w-8 p-0 text-gray-400 hover:text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
   const renderContent = () => {
     switch (activeSection) {
       case 'overview':
-        return renderOverview();
+        return (
+          <DashboardContent 
+            activeSection={activeSection}
+            apiKeysCount={apiKeys.filter(k => k.is_active).length}
+          />
+        );
       case 'keys':
-        return renderApiKeys();
+        return (
+          <ApiKeysContent 
+            apiKeys={apiKeys}
+            onCreateClick={() => setShowCreateDialog(true)}
+            onDeleteClick={handleDeleteClick}
+            onToggleStatus={toggleKeyStatus}
+            onRotateKey={rotateApiKey}
+          />
+        );
       case 'profile':
         return <Profile />;
       case 'settings':
         return (
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-              <p className="text-gray-600 mt-1">Manage your account settings and preferences</p>
-            </div>
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-gray-500">Settings panel coming soon...</p>
-              </CardContent>
-            </Card>
-          </div>
+          <DashboardContent 
+            activeSection={activeSection}
+            apiKeysCount={apiKeys.filter(k => k.is_active).length}
+          />
         );
       default:
-        return renderOverview();
+        return (
+          <DashboardContent 
+            activeSection={activeSection}
+            apiKeysCount={apiKeys.filter(k => k.is_active).length}
+          />
+        );
     }
   };
 
