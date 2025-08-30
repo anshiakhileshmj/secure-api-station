@@ -6,10 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Copy, Eye, EyeOff, Trash2, Plus, User, Edit, RotateCw } from 'lucide-react';
+import { Copy, Eye, EyeOff, Trash2, Plus, Edit, RotateCw } from 'lucide-react';
 import { toast } from 'sonner';
 import Profile from './Profile';
+import DashboardSidebar from './DashboardSidebar';
 import {
   Table,
   TableBody,
@@ -60,12 +60,12 @@ interface DeveloperProfile {
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const [activeSection, setActiveSection] = useState('overview');
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [developerProfile, setDeveloperProfile] = useState<DeveloperProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
-  const [showCreateForm, setShowCreateForm] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -131,7 +131,6 @@ const Dashboard = () => {
     try {
       const apiKey = generateApiKey();
 
-      // Get user's developer profile to get partner_id
       const { data: profile, error: profileError } = await supabase
         .from('developer_profiles')
         .select('partner_id')
@@ -158,7 +157,6 @@ const Dashboard = () => {
 
       setApiKeys(prev => [data, ...prev]);
       setNewKeyName('');
-      setShowCreateForm(false);
       setShowCreateDialog(false);
       toast.success('API key created successfully!');
     } catch (error) {
@@ -271,14 +269,6 @@ const Dashboard = () => {
     });
   };
 
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
-
   const maskApiKey = (key: string) => {
     if (key.length <= 8) return key;
     const prefix = key.substring(0, 3);
@@ -289,283 +279,270 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto py-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-muted rounded w-1/4"></div>
-          <div className="h-32 bg-muted rounded"></div>
-          <div className="h-32 bg-muted rounded"></div>
+      <div className="flex h-screen">
+        <div className="w-64 bg-gray-50 animate-pulse"></div>
+        <div className="flex-1 p-8">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 bg-muted rounded w-1/4"></div>
+            <div className="h-32 bg-muted rounded"></div>
+            <div className="h-32 bg-muted rounded"></div>
+          </div>
         </div>
       </div>
     );
   }
 
-  const activeApiKey = apiKeys.find(key => key.is_active && key.key);
-  console.log('Active API key found:', activeApiKey ? 'Yes' : 'No');
-  console.log('API keys:', apiKeys.map(k => ({ id: k.id, name: k.name, active: k.is_active, hasKey: !!k.key })));
+  const renderOverview = () => (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+        <p className="text-gray-600 mt-1">Monitor your AML-compliant transaction relay service</p>
+      </div>
 
-  return (
-    <div className="container mx-auto py-8 space-y-8">
+      {/* API Endpoints Info */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Deployed Relay API</CardTitle>
+          <CardDescription>Your AML-compliant transaction relay service is live</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Base URL</Label>
+            <div className="flex items-center gap-2">
+              <Input 
+                value="https://resumeak.onrender.com" 
+                readOnly 
+                className="font-mono text-sm"
+              />
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => copyToClipboard("https://resumeak.onrender.com", "Base URL")}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Check Endpoint</Label>
+              <code className="block p-2 bg-muted rounded text-sm">
+                POST /v1/check
+              </code>
+              <p className="text-xs text-muted-foreground">
+                Pre-flight AML check without transaction execution
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Relay Endpoint</Label>
+              <code className="block p-2 bg-muted rounded text-sm">
+                POST /v1/relay
+              </code>
+              <p className="text-xs text-muted-foreground">
+                Execute transaction through AML-compliant relay
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Status Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">API Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span className="text-sm">Online</span>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Active API Keys</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <span className="text-2xl font-bold">{apiKeys.filter(k => k.is_active).length}</span>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Rate Limit</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <span className="text-sm">60 req/min per key</span>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+
+  const renderApiKeys = () => (
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Relay API Dashboard</h1>
-          <p className="text-muted-foreground">Manage API keys and test your deployed relay service</p>
+          <h1 className="text-3xl font-bold text-gray-900">API Keys</h1>
+          <p className="text-gray-600 mt-1">Manage your production API keys for authentication</p>
         </div>
-        <Button 
-          onClick={() => setShowCreateDialog(true)}
-          className="bg-primary hover:bg-primary/90"
-        >
+        <Button onClick={() => setShowCreateDialog(true)} className="bg-emerald-600 hover:bg-emerald-700">
           <Plus className="h-4 w-4 mr-2" />
           Create API Key
         </Button>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="keys">API Keys</TabsTrigger>
-          <TabsTrigger value="profile">
-            <User className="h-4 w-4 mr-2" />
-            Profile
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-6">
-          {/* API Endpoints Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Deployed Relay API</CardTitle>
-              <CardDescription>Your AML-compliant transaction relay service is live</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Base URL</Label>
-                <div className="flex items-center gap-2">
-                  <Input 
-                    value="https://resumeak.onrender.com" 
-                    readOnly 
-                    className="font-mono text-sm"
-                  />
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => copyToClipboard("https://resumeak.onrender.com", "Base URL")}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Check Endpoint</Label>
-                  <code className="block p-2 bg-muted rounded text-sm">
-                    POST /v1/check
-                  </code>
-                  <p className="text-xs text-muted-foreground">
-                    Pre-flight AML check without transaction execution
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label>Relay Endpoint</Label>
-                  <code className="block p-2 bg-muted rounded text-sm">
-                    POST /v1/relay
-                  </code>
-                  <p className="text-xs text-muted-foreground">
-                    Execute transaction through AML-compliant relay
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>API Documentation</Label>
-                <div className="flex items-center gap-2">
-                  <Input 
-                    value="https://resumeak.onrender.com/docs" 
-                    readOnly 
-                    className="font-mono text-sm"
-                  />
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => window.open("https://resumeak.onrender.com/docs", "_blank")}
-                  >
-                    Open
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Status Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">API Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-sm">Online</span>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Active API Keys</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <span className="text-2xl font-bold">{apiKeys.filter(k => k.is_active).length}</span>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Rate Limit</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <span className="text-sm">60 req/min per key</span>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="keys" className="space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-semibold text-gray-900">API Keys</h2>
-              <p className="text-sm text-gray-600 mt-1">
-                API keys are used to authenticate requests to the tailadmin API
-              </p>
-            </div>
-            <Button onClick={() => setShowCreateDialog(true)} className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Add API Key
-            </Button>
-          </div>
-
-          {/* API Keys Table */}
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-50">
-                    <TableHead className="font-medium text-gray-700">Name</TableHead>
-                    <TableHead className="font-medium text-gray-700">Status</TableHead>
-                    <TableHead className="font-medium text-gray-700">Created</TableHead>
-                    <TableHead className="font-medium text-gray-700">Last used</TableHead>
-                    <TableHead className="font-medium text-gray-700">Disable/Enable</TableHead>
-                    <TableHead className="font-medium text-gray-700">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {apiKeys.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                        No API keys found. Create your first API key to get started.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    apiKeys.map((apiKey) => (
-                      <TableRow key={apiKey.id} className="hover:bg-gray-50">
-                        <TableCell>
-                          <div className="space-y-2">
-                            <div className="font-medium text-gray-900">{apiKey.name}</div>
-                            <div className="flex items-center gap-2">
-                              <code className="text-sm bg-gray-100 px-2 py-1 rounded font-mono">
-                                {visibleKeys.has(apiKey.id) ? apiKey.key : maskApiKey(apiKey.key)}
-                              </code>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => copyToClipboard(apiKey.key, "API key")}
-                                className="h-7 w-7 p-0"
-                              >
-                                <Copy className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => toggleKeyVisibility(apiKey.id)}
-                                className="h-7 w-7 p-0"
-                              >
-                                {visibleKeys.has(apiKey.id) ? (
-                                  <EyeOff className="h-3 w-3" />
-                                ) : (
-                                  <Eye className="h-3 w-3" />
-                                )}
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => rotateApiKey(apiKey.id)}
-                                className="h-7 w-7 p-0"
-                              >
-                                <RotateCw className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant={apiKey.is_active ? "default" : "secondary"}
-                            className={apiKey.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-gray-50">
+                <TableHead className="font-medium text-gray-700">Name</TableHead>
+                <TableHead className="font-medium text-gray-700">Status</TableHead>
+                <TableHead className="font-medium text-gray-700">Created</TableHead>
+                <TableHead className="font-medium text-gray-700">Last used</TableHead>
+                <TableHead className="font-medium text-gray-700">Enable/Disable</TableHead>
+                <TableHead className="font-medium text-gray-700">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {apiKeys.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                    No API keys found. Create your first API key to get started.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                apiKeys.map((apiKey) => (
+                  <TableRow key={apiKey.id} className="hover:bg-gray-50">
+                    <TableCell>
+                      <div className="space-y-2">
+                        <div className="font-medium text-gray-900">{apiKey.name}</div>
+                        <div className="flex items-center gap-2">
+                          <code className="text-sm bg-gray-100 px-2 py-1 rounded font-mono">
+                            {visibleKeys.has(apiKey.id) ? apiKey.key : maskApiKey(apiKey.key)}
+                          </code>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => copyToClipboard(apiKey.key, "API key")}
+                            className="h-7 w-7 p-0"
                           >
-                            {apiKey.is_active ? "Active" : "Disabled"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-gray-600">
-                          {formatDate(apiKey.created_at)}
-                        </TableCell>
-                        <TableCell className="text-gray-600">
-                          {apiKey.last_used_at ? (
-                            <>
-                              Today, {formatTime(apiKey.last_used_at)}
-                            </>
-                          ) : (
-                            "Never"
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              className="sr-only peer"
-                              checked={apiKey.is_active}
-                              onChange={() => toggleKeyStatus(apiKey.id, apiKey.is_active)}
-                            />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                          </label>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteClick(apiKey)}
-                              className="h-8 w-8 p-0 text-gray-400 hover:text-red-600"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleKeyVisibility(apiKey.id)}
+                            className="h-7 w-7 p-0"
+                          >
+                            {visibleKeys.has(apiKey.id) ? (
+                              <EyeOff className="h-3 w-3" />
+                            ) : (
+                              <Eye className="h-3 w-3" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => rotateApiKey(apiKey.id)}
+                            className="h-7 w-7 p-0"
+                          >
+                            <RotateCw className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={apiKey.is_active ? "default" : "secondary"}
+                        className={apiKey.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}
+                      >
+                        {apiKey.is_active ? "Active" : "Disabled"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-gray-600">
+                      {formatDate(apiKey.created_at)}
+                    </TableCell>
+                    <TableCell className="text-gray-600">
+                      {apiKey.last_used_at ? formatDate(apiKey.last_used_at) : "Never"}
+                    </TableCell>
+                    <TableCell>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={apiKey.is_active}
+                          onChange={() => toggleKeyStatus(apiKey.id, apiKey.is_active)}
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                      </label>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteClick(apiKey)}
+                          className="h-8 w-8 p-0 text-gray-400 hover:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
 
-        <TabsContent value="profile">
-          <Profile />
-        </TabsContent>
-      </Tabs>
+  const renderContent = () => {
+    switch (activeSection) {
+      case 'overview':
+        return renderOverview();
+      case 'keys':
+        return renderApiKeys();
+      case 'profile':
+        return <Profile />;
+      case 'settings':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
+              <p className="text-gray-600 mt-1">Manage your account settings and preferences</p>
+            </div>
+            <Card>
+              <CardContent className="p-6">
+                <p className="text-gray-500">Settings panel coming soon...</p>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      default:
+        return renderOverview();
+    }
+  };
+
+  return (
+    <div className="flex h-screen bg-gray-50">
+      <DashboardSidebar activeSection={activeSection} onSectionChange={setActiveSection} />
+      
+      <div className="flex-1 overflow-auto">
+        <div className="p-8">
+          {renderContent()}
+        </div>
+      </div>
 
       {/* Create API Key Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
@@ -600,7 +577,7 @@ const Dashboard = () => {
             <Button 
               onClick={createApiKey} 
               disabled={creating}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-emerald-600 hover:bg-emerald-700"
             >
               {creating ? 'Creating...' : 'Create API Key'}
             </Button>
