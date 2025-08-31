@@ -6,13 +6,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Eye, EyeOff, Trash2, Plus, Edit, RotateCw } from 'lucide-react';
+import { Copy, Eye, EyeOff, Trash2, Plus, Edit, RotateCw, MoreHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import ProfileSettings from './ProfileSettings';
 import DashboardSidebar from './DashboardSidebar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+
 interface ApiKey {
   id: string;
   name: string;
@@ -25,6 +27,7 @@ interface ApiKey {
   expires_at: string | null;
   rate_limit_per_minute: number;
 }
+
 interface DeveloperProfile {
   partner_id: string;
   company_name: string | null;
@@ -32,6 +35,7 @@ interface DeveloperProfile {
   api_usage_plan: string;
   monthly_request_limit: number;
 }
+
 const Dashboard = () => {
   const {
     user
@@ -47,15 +51,18 @@ const Dashboard = () => {
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [keyToDelete, setKeyToDelete] = useState<ApiKey | null>(null);
+
   useEffect(() => {
     if (user) {
       fetchDeveloperProfile();
       fetchApiKeys();
     }
   }, [user]);
+
   const handleToggleCollapse = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
+
   const fetchDeveloperProfile = async () => {
     try {
       const {
@@ -69,6 +76,7 @@ const Dashboard = () => {
       toast.error('Failed to fetch developer profile');
     }
   };
+
   const fetchApiKeys = async () => {
     try {
       const {
@@ -86,11 +94,13 @@ const Dashboard = () => {
       setLoading(false);
     }
   };
+
   const generateApiKey = () => {
     const prefix = 'wm_';
     const randomPart = Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
     return prefix + randomPart;
   };
+
   const createApiKey = async () => {
     if (!newKeyName.trim()) {
       toast.error('Please enter a name for your API key');
@@ -128,6 +138,7 @@ const Dashboard = () => {
       setCreating(false);
     }
   };
+
   const hashApiKey = async (key: string) => {
     const encoder = new TextEncoder();
     const data = encoder.encode(key);
@@ -135,10 +146,12 @@ const Dashboard = () => {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   };
+
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied to clipboard!`);
   };
+
   const toggleKeyVisibility = (keyId: string) => {
     const newVisible = new Set(visibleKeys);
     if (newVisible.has(keyId)) {
@@ -148,6 +161,7 @@ const Dashboard = () => {
     }
     setVisibleKeys(newVisible);
   };
+
   const toggleKeyStatus = async (keyId: string, currentStatus: boolean) => {
     try {
       const {
@@ -166,6 +180,7 @@ const Dashboard = () => {
       toast.error('Failed to update API key status');
     }
   };
+
   const rotateApiKey = async (keyId: string) => {
     try {
       const newApiKey = generateApiKey();
@@ -184,10 +199,12 @@ const Dashboard = () => {
       toast.error('Failed to rotate API key');
     }
   };
+
   const handleDeleteClick = (apiKey: ApiKey) => {
     setKeyToDelete(apiKey);
     setDeleteDialogOpen(true);
   };
+
   const deleteApiKey = async () => {
     if (!keyToDelete) return;
     try {
@@ -204,6 +221,7 @@ const Dashboard = () => {
       toast.error('Failed to delete API key');
     }
   };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       day: 'numeric',
@@ -211,6 +229,7 @@ const Dashboard = () => {
       year: 'numeric'
     });
   };
+
   const maskApiKey = (key: string) => {
     if (key.length <= 8) return key;
     const prefix = key.substring(0, 3);
@@ -218,6 +237,7 @@ const Dashboard = () => {
     const masked = '*'.repeat(key.length - 7);
     return `${prefix}${masked}${suffix}`;
   };
+
   if (loading) {
     return <div className="flex h-screen">
         <div className="w-64 bg-gray-50 animate-pulse"></div>
@@ -230,6 +250,7 @@ const Dashboard = () => {
         </div>
       </div>;
   }
+
   const renderOverview = () => <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
@@ -306,7 +327,9 @@ const Dashboard = () => {
         </Card>
       </div>
     </div>;
-  const renderApiKeys = () => <div className="space-y-6">
+
+  const renderApiKeys = () => (
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">API Keys</h1>
@@ -323,70 +346,98 @@ const Dashboard = () => {
           <Table>
             <TableHeader>
               <TableRow className="bg-gray-50">
-                <TableHead className="font-medium text-gray-700">Name</TableHead>
-                <TableHead className="font-medium text-gray-700">Status</TableHead>
-                <TableHead className="font-medium text-gray-700">Created</TableHead>
-                <TableHead className="font-medium text-gray-700">Last used</TableHead>
-                <TableHead className="font-medium text-gray-700">Enable/Disable</TableHead>
-                <TableHead className="font-medium text-gray-700">Actions</TableHead>
+                <TableHead className="font-medium text-gray-700 w-1/4">Name</TableHead>
+                <TableHead className="font-medium text-gray-700 w-2/5">API Key</TableHead>
+                <TableHead className="font-medium text-gray-700 w-1/6">Created</TableHead>
+                <TableHead className="font-medium text-gray-700 w-1/6 text-center">Enabled</TableHead>
+                <TableHead className="font-medium text-gray-700 w-16"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {apiKeys.length === 0 ? <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+              {apiKeys.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                     No API keys found. Create your first API key to get started.
                   </TableCell>
-                </TableRow> : apiKeys.map(apiKey => <TableRow key={apiKey.id} className="hover:bg-gray-50">
+                </TableRow>
+              ) : (
+                apiKeys.map((apiKey) => (
+                  <TableRow key={apiKey.id} className="hover:bg-gray-50">
                     <TableCell>
-                      <div className="space-y-2">
-                        <div className="font-medium text-gray-900">{apiKey.name}</div>
-                        <div className="flex items-center gap-2">
-                          <code className="text-sm bg-gray-100 px-2 py-1 rounded font-mono">
-                            {visibleKeys.has(apiKey.id) ? apiKey.key : maskApiKey(apiKey.key)}
-                          </code>
-                          <Button variant="ghost" size="sm" onClick={() => copyToClipboard(apiKey.key, "API key")} className="h-7 w-7 p-0">
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => toggleKeyVisibility(apiKey.id)} className="h-7 w-7 p-0">
-                            {visibleKeys.has(apiKey.id) ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => rotateApiKey(apiKey.id)} className="h-7 w-7 p-0">
-                            <RotateCw className="h-3 w-3" />
-                          </Button>
-                        </div>
+                      <div className="font-medium text-gray-900">{apiKey.name}</div>
+                      <div className="text-sm text-gray-500">
+                        Last used: {apiKey.last_used_at ? formatDate(apiKey.last_used_at) : "Never"}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={apiKey.is_active ? "default" : "secondary"} className={apiKey.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                        {apiKey.is_active ? "Active" : "Disabled"}
-                      </Badge>
+                      <div className="flex items-center gap-2 max-w-md">
+                        <code className="text-sm bg-gray-100 px-2 py-1 rounded font-mono flex-1 truncate">
+                          {visibleKeys.has(apiKey.id) ? apiKey.key : maskApiKey(apiKey.key)}
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(apiKey.key, "API key")}
+                          className="h-7 w-7 p-0 flex-shrink-0"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleKeyVisibility(apiKey.id)}
+                          className="h-7 w-7 p-0 flex-shrink-0"
+                        >
+                          {visibleKeys.has(apiKey.id) ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                        </Button>
+                      </div>
                     </TableCell>
                     <TableCell className="text-gray-600">
                       {formatDate(apiKey.created_at)}
                     </TableCell>
-                    <TableCell className="text-gray-600">
-                      {apiKey.last_used_at ? formatDate(apiKey.last_used_at) : "Never"}
-                    </TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
                       <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" className="sr-only peer" checked={apiKey.is_active} onChange={() => toggleKeyStatus(apiKey.id, apiKey.is_active)} />
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={apiKey.is_active}
+                          onChange={() => toggleKeyStatus(apiKey.id, apiKey.is_active)}
+                        />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
                       </label>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(apiKey)} className="h-8 w-8 p-0 text-gray-400 hover:text-red-600">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                        
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-32">
+                          <DropdownMenuItem onClick={() => rotateApiKey(apiKey.id)}>
+                            <RotateCw className="h-4 w-4 mr-2" />
+                            Rotate
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteClick(apiKey)}
+                            className="text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
-                  </TableRow>)}
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
-    </div>;
+    </div>
+  );
+
   const renderContent = () => {
     switch (activeSection) {
       case 'overview':
@@ -411,6 +462,7 @@ const Dashboard = () => {
         return renderOverview();
     }
   };
+
   return <div className="flex h-screen bg-gray-50">
       <DashboardSidebar activeSection={activeSection} onSectionChange={setActiveSection} isCollapsed={sidebarCollapsed} onToggleCollapse={handleToggleCollapse} />
       
@@ -472,4 +524,5 @@ const Dashboard = () => {
       </AlertDialog>
     </div>;
 };
+
 export default Dashboard;
