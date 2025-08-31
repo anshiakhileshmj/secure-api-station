@@ -10,6 +10,7 @@ import { Copy, Eye, EyeOff, Trash2, Plus, Edit, RotateCw, MoreHorizontal } from 
 import { toast } from 'sonner';
 import ProfileSettings from './ProfileSettings';
 import DashboardSidebar from './DashboardSidebar';
+import ApiAnalytics from './ApiAnalytics';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -257,75 +258,8 @@ const Dashboard = () => {
         <p className="text-gray-600 mt-1">Monitor your AML-compliant transaction relay service</p>
       </div>
 
-      {/* API Endpoints Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Deployed Relay API</CardTitle>
-          <CardDescription>Your AML-compliant transaction relay service is live</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Base URL</Label>
-            <div className="flex items-center gap-2">
-              <Input value="https://resumeak.onrender.com" readOnly className="font-mono text-sm" />
-              <Button variant="outline" size="sm" onClick={() => copyToClipboard("https://resumeak.onrender.com", "Base URL")}>
-                <Copy className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Check Endpoint</Label>
-              <code className="block p-2 bg-muted rounded text-sm">
-                POST /v1/check
-              </code>
-              <p className="text-xs text-muted-foreground">
-                Pre-flight AML check without transaction execution
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label>Relay Endpoint</Label>
-              <code className="block p-2 bg-muted rounded text-sm">
-                POST /v1/relay
-              </code>
-              <p className="text-xs text-muted-foreground">
-                Execute transaction through AML-compliant relay
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">API Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm">Online</span>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Active API Keys</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <span className="text-2xl font-bold">{apiKeys.filter(k => k.is_active).length}</span>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Rate Limit</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <span className="text-sm">60 req/min per key</span>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Replace the API Endpoints Info with Analytics */}
+      <ApiAnalytics />
     </div>;
 
   const renderApiKeys = () => (
