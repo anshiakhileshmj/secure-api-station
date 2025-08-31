@@ -6,10 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Eye, EyeOff, Trash2, Plus, Edit, RotateCw, MoreHorizontal } from 'lucide-react';
+import { Copy, Eye, EyeOff, Trash2, Plus, Edit, RotateCw, MoreHorizontal, Home, User, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import ProfileSettings from './ProfileSettings';
-import DashboardSidebar from './DashboardSidebar';
 import ApiAnalytics from './ApiAnalytics';
 import NotificationDropdown from './NotificationDropdown';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -39,11 +38,8 @@ interface DeveloperProfile {
 }
 
 const Dashboard = () => {
-  const {
-    user
-  } = useAuth();
+  const { user } = useAuth();
   const [activeSection, setActiveSection] = useState('overview');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [developerProfile, setDeveloperProfile] = useState<DeveloperProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,16 +57,14 @@ const Dashboard = () => {
     }
   }, [user]);
 
-  const handleToggleCollapse = () => {
-    setSidebarCollapsed(!sidebarCollapsed);
-  };
-
   const fetchDeveloperProfile = async () => {
     try {
-      const {
-        data,
-        error
-      } = await supabase.from('developer_profiles').select('partner_id, company_name, website, api_usage_plan, monthly_request_limit').eq('user_id', user?.id).single();
+      const { data, error } = await supabase
+        .from('developer_profiles')
+        .select('partner_id, company_name, website, api_usage_plan, monthly_request_limit')
+        .eq('user_id', user?.id)
+        .single();
+      
       if (error) throw error;
       setDeveloperProfile(data);
     } catch (error) {
@@ -81,12 +75,12 @@ const Dashboard = () => {
 
   const fetchApiKeys = async () => {
     try {
-      const {
-        data,
-        error
-      } = await supabase.from('api_keys').select('*').eq('user_id', user?.id).order('created_at', {
-        ascending: false
-      });
+      const { data, error } = await supabase
+        .from('api_keys')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false });
+      
       if (error) throw error;
       setApiKeys(data || []);
     } catch (error) {
@@ -99,7 +93,10 @@ const Dashboard = () => {
 
   const generateApiKey = () => {
     const prefix = 'wm_';
-    const randomPart = Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+    const randomPart = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('')
+      .toUpperCase();
     return prefix + randomPart;
   };
 
@@ -108,27 +105,34 @@ const Dashboard = () => {
       toast.error('Please enter a name for your API key');
       return;
     }
+
     setCreating(true);
     try {
       const apiKey = generateApiKey();
-      const {
-        data: profile,
-        error: profileError
-      } = await supabase.from('developer_profiles').select('partner_id').eq('user_id', user?.id).single();
+      const { data: profile, error: profileError } = await supabase
+        .from('developer_profiles')
+        .select('partner_id')
+        .eq('user_id', user?.id)
+        .single();
+      
       if (profileError) throw profileError;
-      const {
-        data,
-        error
-      } = await supabase.from('api_keys').insert({
-        name: newKeyName.trim(),
-        key: apiKey,
-        key_hash: await hashApiKey(apiKey),
-        partner_id: profile.partner_id,
-        user_id: user?.id,
-        is_active: true,
-        rate_limit_per_minute: 60
-      }).select().single();
+
+      const { data, error } = await supabase
+        .from('api_keys')
+        .insert({
+          name: newKeyName.trim(),
+          key: apiKey,
+          key_hash: await hashApiKey(apiKey),
+          partner_id: profile.partner_id,
+          user_id: user?.id,
+          is_active: true,
+          rate_limit_per_minute: 60
+        })
+        .select()
+        .single();
+      
       if (error) throw error;
+
       setApiKeys(prev => [data, ...prev]);
       setNewKeyName('');
       setShowCreateDialog(false);
@@ -166,16 +170,16 @@ const Dashboard = () => {
 
   const toggleKeyStatus = async (keyId: string, currentStatus: boolean) => {
     try {
-      const {
-        error
-      } = await supabase.from('api_keys').update({
-        is_active: !currentStatus
-      }).eq('id', keyId);
+      const { error } = await supabase
+        .from('api_keys')
+        .update({ is_active: !currentStatus })
+        .eq('id', keyId);
+      
       if (error) throw error;
-      setApiKeys(prev => prev.map(key => key.id === keyId ? {
-        ...key,
-        is_active: !currentStatus
-      } : key));
+
+      setApiKeys(prev => prev.map(key => 
+        key.id === keyId ? { ...key, is_active: !currentStatus } : key
+      ));
       toast.success(`API key ${!currentStatus ? 'enabled' : 'disabled'} successfully!`);
     } catch (error) {
       console.error('Error toggling API key status:', error);
@@ -186,14 +190,17 @@ const Dashboard = () => {
   const rotateApiKey = async (keyId: string) => {
     try {
       const newApiKey = generateApiKey();
-      const {
-        error
-      } = await supabase.from('api_keys').update({
-        key: newApiKey,
-        key_hash: await hashApiKey(newApiKey),
-        last_used_at: null
-      }).eq('id', keyId);
+      const { error } = await supabase
+        .from('api_keys')
+        .update({
+          key: newApiKey,
+          key_hash: await hashApiKey(newApiKey),
+          last_used_at: null
+        })
+        .eq('id', keyId);
+      
       if (error) throw error;
+
       await fetchApiKeys();
       toast.success('API key rotated successfully!');
     } catch (error) {
@@ -209,11 +216,15 @@ const Dashboard = () => {
 
   const deleteApiKey = async () => {
     if (!keyToDelete) return;
+
     try {
-      const {
-        error
-      } = await supabase.from('api_keys').delete().eq('id', keyToDelete.id);
+      const { error } = await supabase
+        .from('api_keys')
+        .delete()
+        .eq('id', keyToDelete.id);
+      
       if (error) throw error;
+
       setApiKeys(prev => prev.filter(key => key.id !== keyToDelete.id));
       toast.success('API key deleted successfully!');
       setDeleteDialogOpen(false);
@@ -241,19 +252,19 @@ const Dashboard = () => {
   };
 
   if (loading) {
-    return <div className="flex h-screen">
-        <div className="w-64 bg-gray-50 animate-pulse"></div>
-        <div className="flex-1 p-8">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-muted rounded w-1/4"></div>
-            <div className="h-32 bg-muted rounded"></div>
-            <div className="h-32 bg-muted rounded"></div>
-          </div>
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="animate-pulse space-y-4 p-8">
+          <div className="h-8 bg-muted rounded w-1/4"></div>
+          <div className="h-32 bg-muted rounded"></div>
+          <div className="h-32 bg-muted rounded"></div>
         </div>
-      </div>;
+      </div>
+    );
   }
 
-  const renderOverview = () => <div className="space-y-6">
+  const renderOverview = () => (
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
@@ -261,10 +272,9 @@ const Dashboard = () => {
         </div>
         <NotificationDropdown />
       </div>
-
-      {/* Replace the API Endpoints Info with Analytics */}
       <ApiAnalytics />
-    </div>;
+    </div>
+  );
 
   const renderApiKeys = () => (
     <div className="space-y-6">
@@ -379,6 +389,36 @@ const Dashboard = () => {
     </div>
   );
 
+  const renderProfile = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Profile Settings</h1>
+          <p className="text-gray-600 mt-1">Manage your account settings and preferences</p>
+        </div>
+        <NotificationDropdown />
+      </div>
+      <ProfileSettings />
+    </div>
+  );
+
+  const renderSettings = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
+          <p className="text-gray-600 mt-1">Manage your account settings and preferences</p>
+        </div>
+        <NotificationDropdown />
+      </div>
+      <Card>
+        <CardContent className="p-6">
+          <p className="text-gray-500">Settings panel coming soon...</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
   const renderContent = () => {
     switch (activeSection) {
       case 'overview':
@@ -386,43 +426,69 @@ const Dashboard = () => {
       case 'keys':
         return renderApiKeys();
       case 'profile':
-        return <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Profile Settings</h1>
-                <p className="text-gray-600 mt-1">Manage your account settings and preferences</p>
-              </div>
-              <NotificationDropdown />
-            </div>
-            <ProfileSettings />
-          </div>;
+        return renderProfile();
       case 'settings':
-        return <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-                <p className="text-gray-600 mt-1">Manage your account settings and preferences</p>
-              </div>
-              <NotificationDropdown />
-            </div>
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-gray-500">Settings panel coming soon...</p>
-              </CardContent>
-            </Card>
-          </div>;
+        return renderSettings();
       default:
         return renderOverview();
     }
   };
 
-  return <div className="flex h-screen bg-gray-50">
-      <DashboardSidebar activeSection={activeSection} onSectionChange={setActiveSection} isCollapsed={sidebarCollapsed} onToggleCollapse={handleToggleCollapse} />
-      
-      <div className="flex-1 overflow-auto">
-        <div className="p-8">
-          {renderContent()}
-        </div>
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header Navigation */}
+      <div className="p-4 flex justify-center">
+        <nav className="flex items-center space-x-1 bg-white/10 backdrop-blur-md border border-white/30 rounded-2xl p-2 shadow-xl">
+          <button 
+            onClick={() => setActiveSection('overview')}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-inter tracking-tighter transition-all duration-300 hover:scale-105 active:scale-95 ${
+              activeSection === 'overview' 
+                ? 'bg-white/30 backdrop-blur-md text-foreground shadow-lg' 
+                : 'text-muted-foreground hover:bg-white/10'
+            }`}
+          >
+            <Home className="h-4 w-4" />
+            Overview
+          </button>
+          <button 
+            onClick={() => setActiveSection('keys')}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-inter tracking-tighter transition-all duration-300 hover:scale-105 active:scale-95 ${
+              activeSection === 'keys' 
+                ? 'bg-white/30 backdrop-blur-md text-foreground shadow-lg' 
+                : 'text-muted-foreground hover:bg-white/10'
+            }`}
+          >
+            <User className="h-4 w-4" />
+            API Keys
+          </button>
+          <button 
+            onClick={() => setActiveSection('profile')}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-inter tracking-tighter transition-all duration-300 hover:scale-105 active:scale-95 ${
+              activeSection === 'profile' 
+                ? 'bg-white/30 backdrop-blur-md text-foreground shadow-lg' 
+                : 'text-muted-foreground hover:bg-white/10'
+            }`}
+          >
+            <User className="h-4 w-4" />
+            Profile
+          </button>
+          <button 
+            onClick={() => setActiveSection('settings')}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-inter tracking-tighter transition-all duration-300 hover:scale-105 active:scale-95 ${
+              activeSection === 'settings' 
+                ? 'bg-white/30 backdrop-blur-md text-foreground shadow-lg' 
+                : 'text-muted-foreground hover:bg-white/10'
+            }`}
+          >
+            <Settings className="h-4 w-4" />
+            Settings
+          </button>
+        </nav>
+      </div>
+
+      {/* Main Content */}
+      <div className="p-8">
+        {renderContent()}
       </div>
 
       {/* Create API Key Dialog */}
@@ -437,17 +503,29 @@ const Dashboard = () => {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="keyName">Key Name</Label>
-              <Input id="keyName" placeholder="e.g., Production API Key" value={newKeyName} onChange={e => setNewKeyName(e.target.value)} />
+              <Input
+                id="keyName"
+                placeholder="e.g., Production API Key"
+                value={newKeyName}
+                onChange={(e) => setNewKeyName(e.target.value)}
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => {
-            setShowCreateDialog(false);
-            setNewKeyName('');
-          }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCreateDialog(false);
+                setNewKeyName('');
+              }}
+            >
               Cancel
             </Button>
-            <Button onClick={createApiKey} disabled={creating} className="bg-emerald-600 hover:bg-emerald-700">
+            <Button
+              onClick={createApiKey}
+              disabled={creating}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
               {creating ? 'Creating...' : 'Create API Key'}
             </Button>
           </DialogFooter>
@@ -469,13 +547,17 @@ const Dashboard = () => {
             <AlertDialogCancel onClick={() => setKeyToDelete(null)}>
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction onClick={deleteApiKey} className="bg-red-600 text-white hover:bg-red-700">
+            <AlertDialogAction
+              onClick={deleteApiKey}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
               Delete API Key
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>;
+    </div>
+  );
 };
 
 export default Dashboard;
