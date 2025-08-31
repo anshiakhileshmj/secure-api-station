@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import ProfileSettings from './ProfileSettings';
 import DashboardSidebar from './DashboardSidebar';
 import ApiAnalytics from './ApiAnalytics';
+import NotificationDropdown from './NotificationDropdown';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -253,9 +254,12 @@ const Dashboard = () => {
   }
 
   const renderOverview = () => <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-1">Monitor your AML-compliant transaction relay service</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600 mt-1">Monitor your AML-compliant transaction relay service</p>
+        </div>
+        <NotificationDropdown />
       </div>
 
       {/* Replace the API Endpoints Info with Analytics */}
@@ -269,10 +273,13 @@ const Dashboard = () => {
           <h1 className="text-3xl font-bold text-gray-900">API Keys</h1>
           <p className="text-gray-600 mt-1">Manage your production API keys for authentication</p>
         </div>
-        <Button onClick={() => setShowCreateDialog(true)} className="bg-emerald-600 hover:bg-emerald-700">
-          <Plus className="h-4 w-4 mr-2" />
-          Create API Key
-        </Button>
+        <div className="flex items-center gap-2">
+          <NotificationDropdown />
+          <Button onClick={() => setShowCreateDialog(true)} className="bg-emerald-600 hover:bg-emerald-700">
+            <Plus className="h-4 w-4 mr-2" />
+            Create API Key
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -379,12 +386,24 @@ const Dashboard = () => {
       case 'keys':
         return renderApiKeys();
       case 'profile':
-        return <ProfileSettings />;
+        return <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Profile Settings</h1>
+                <p className="text-gray-600 mt-1">Manage your account settings and preferences</p>
+              </div>
+              <NotificationDropdown />
+            </div>
+            <ProfileSettings />
+          </div>;
       case 'settings':
         return <div className="space-y-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-              <p className="text-gray-600 mt-1">Manage your account settings and preferences</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
+                <p className="text-gray-600 mt-1">Manage your account settings and preferences</p>
+              </div>
+              <NotificationDropdown />
             </div>
             <Card>
               <CardContent className="p-6">
