@@ -10,33 +10,9 @@ import { Copy, Eye, EyeOff, Trash2, Plus, Edit, RotateCw } from 'lucide-react';
 import { toast } from 'sonner';
 import ProfileSettings from './ProfileSettings';
 import DashboardSidebar from './DashboardSidebar';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 interface ApiKey {
   id: string;
   name: string;
@@ -49,7 +25,6 @@ interface ApiKey {
   expires_at: string | null;
   rate_limit_per_minute: number;
 }
-
 interface DeveloperProfile {
   partner_id: string;
   company_name: string | null;
@@ -57,9 +32,10 @@ interface DeveloperProfile {
   api_usage_plan: string;
   monthly_request_limit: number;
 }
-
 const Dashboard = () => {
-  const { user } = useAuth();
+  const {
+    user
+  } = useAuth();
   const [activeSection, setActiveSection] = useState('overview');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
@@ -71,26 +47,21 @@ const Dashboard = () => {
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [keyToDelete, setKeyToDelete] = useState<ApiKey | null>(null);
-
   useEffect(() => {
     if (user) {
       fetchDeveloperProfile();
       fetchApiKeys();
     }
   }, [user]);
-
   const handleToggleCollapse = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
-
   const fetchDeveloperProfile = async () => {
     try {
-      const { data, error } = await supabase
-        .from('developer_profiles')
-        .select('partner_id, company_name, website, api_usage_plan, monthly_request_limit')
-        .eq('user_id', user?.id)
-        .single();
-
+      const {
+        data,
+        error
+      } = await supabase.from('developer_profiles').select('partner_id, company_name, website, api_usage_plan, monthly_request_limit').eq('user_id', user?.id).single();
       if (error) throw error;
       setDeveloperProfile(data);
     } catch (error) {
@@ -98,15 +69,14 @@ const Dashboard = () => {
       toast.error('Failed to fetch developer profile');
     }
   };
-
   const fetchApiKeys = async () => {
     try {
-      const { data, error } = await supabase
-        .from('api_keys')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
-
+      const {
+        data,
+        error
+      } = await supabase.from('api_keys').select('*').eq('user_id', user?.id).order('created_at', {
+        ascending: false
+      });
       if (error) throw error;
       setApiKeys(data || []);
     } catch (error) {
@@ -116,50 +86,37 @@ const Dashboard = () => {
       setLoading(false);
     }
   };
-
   const generateApiKey = () => {
     const prefix = 'wm_';
-    const randomPart = Array.from(crypto.getRandomValues(new Uint8Array(16)))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('')
-      .toUpperCase();
+    const randomPart = Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
     return prefix + randomPart;
   };
-
   const createApiKey = async () => {
     if (!newKeyName.trim()) {
       toast.error('Please enter a name for your API key');
       return;
     }
-
     setCreating(true);
     try {
       const apiKey = generateApiKey();
-
-      const { data: profile, error: profileError } = await supabase
-        .from('developer_profiles')
-        .select('partner_id')
-        .eq('user_id', user?.id)
-        .single();
-
+      const {
+        data: profile,
+        error: profileError
+      } = await supabase.from('developer_profiles').select('partner_id').eq('user_id', user?.id).single();
       if (profileError) throw profileError;
-
-      const { data, error } = await supabase
-        .from('api_keys')
-        .insert({
-          name: newKeyName.trim(),
-          key: apiKey,
-          key_hash: await hashApiKey(apiKey),
-          partner_id: profile.partner_id,
-          user_id: user?.id,
-          is_active: true,
-          rate_limit_per_minute: 60
-        })
-        .select()
-        .single();
-
+      const {
+        data,
+        error
+      } = await supabase.from('api_keys').insert({
+        name: newKeyName.trim(),
+        key: apiKey,
+        key_hash: await hashApiKey(apiKey),
+        partner_id: profile.partner_id,
+        user_id: user?.id,
+        is_active: true,
+        rate_limit_per_minute: 60
+      }).select().single();
       if (error) throw error;
-
       setApiKeys(prev => [data, ...prev]);
       setNewKeyName('');
       setShowCreateDialog(false);
@@ -171,7 +128,6 @@ const Dashboard = () => {
       setCreating(false);
     }
   };
-
   const hashApiKey = async (key: string) => {
     const encoder = new TextEncoder();
     const data = encoder.encode(key);
@@ -179,12 +135,10 @@ const Dashboard = () => {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   };
-
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied to clipboard!`);
   };
-
   const toggleKeyVisibility = (keyId: string) => {
     const newVisible = new Set(visibleKeys);
     if (newVisible.has(keyId)) {
@@ -194,44 +148,35 @@ const Dashboard = () => {
     }
     setVisibleKeys(newVisible);
   };
-
   const toggleKeyStatus = async (keyId: string, currentStatus: boolean) => {
     try {
-      const { error } = await supabase
-        .from('api_keys')
-        .update({ is_active: !currentStatus })
-        .eq('id', keyId);
-
+      const {
+        error
+      } = await supabase.from('api_keys').update({
+        is_active: !currentStatus
+      }).eq('id', keyId);
       if (error) throw error;
-
-      setApiKeys(prev => 
-        prev.map(key => 
-          key.id === keyId ? { ...key, is_active: !currentStatus } : key
-        )
-      );
-
+      setApiKeys(prev => prev.map(key => key.id === keyId ? {
+        ...key,
+        is_active: !currentStatus
+      } : key));
       toast.success(`API key ${!currentStatus ? 'enabled' : 'disabled'} successfully!`);
     } catch (error) {
       console.error('Error toggling API key status:', error);
       toast.error('Failed to update API key status');
     }
   };
-
   const rotateApiKey = async (keyId: string) => {
     try {
       const newApiKey = generateApiKey();
-      
-      const { error } = await supabase
-        .from('api_keys')
-        .update({
-          key: newApiKey,
-          key_hash: await hashApiKey(newApiKey),
-          last_used_at: null
-        })
-        .eq('id', keyId);
-
+      const {
+        error
+      } = await supabase.from('api_keys').update({
+        key: newApiKey,
+        key_hash: await hashApiKey(newApiKey),
+        last_used_at: null
+      }).eq('id', keyId);
       if (error) throw error;
-
       await fetchApiKeys();
       toast.success('API key rotated successfully!');
     } catch (error) {
@@ -239,23 +184,17 @@ const Dashboard = () => {
       toast.error('Failed to rotate API key');
     }
   };
-
   const handleDeleteClick = (apiKey: ApiKey) => {
     setKeyToDelete(apiKey);
     setDeleteDialogOpen(true);
   };
-
   const deleteApiKey = async () => {
     if (!keyToDelete) return;
-
     try {
-      const { error } = await supabase
-        .from('api_keys')
-        .delete()
-        .eq('id', keyToDelete.id);
-
+      const {
+        error
+      } = await supabase.from('api_keys').delete().eq('id', keyToDelete.id);
       if (error) throw error;
-
       setApiKeys(prev => prev.filter(key => key.id !== keyToDelete.id));
       toast.success('API key deleted successfully!');
       setDeleteDialogOpen(false);
@@ -265,7 +204,6 @@ const Dashboard = () => {
       toast.error('Failed to delete API key');
     }
   };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       day: 'numeric',
@@ -273,7 +211,6 @@ const Dashboard = () => {
       year: 'numeric'
     });
   };
-
   const maskApiKey = (key: string) => {
     if (key.length <= 8) return key;
     const prefix = key.substring(0, 3);
@@ -281,10 +218,8 @@ const Dashboard = () => {
     const masked = '*'.repeat(key.length - 7);
     return `${prefix}${masked}${suffix}`;
   };
-
   if (loading) {
-    return (
-      <div className="flex h-screen">
+    return <div className="flex h-screen">
         <div className="w-64 bg-gray-50 animate-pulse"></div>
         <div className="flex-1 p-8">
           <div className="animate-pulse space-y-4">
@@ -293,12 +228,9 @@ const Dashboard = () => {
             <div className="h-32 bg-muted rounded"></div>
           </div>
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  const renderOverview = () => (
-    <div className="space-y-6">
+  const renderOverview = () => <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
         <p className="text-gray-600 mt-1">Monitor your AML-compliant transaction relay service</p>
@@ -314,16 +246,8 @@ const Dashboard = () => {
           <div className="space-y-2">
             <Label>Base URL</Label>
             <div className="flex items-center gap-2">
-              <Input 
-                value="https://resumeak.onrender.com" 
-                readOnly 
-                className="font-mono text-sm"
-              />
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => copyToClipboard("https://resumeak.onrender.com", "Base URL")}
-              >
+              <Input value="https://resumeak.onrender.com" readOnly className="font-mono text-sm" />
+              <Button variant="outline" size="sm" onClick={() => copyToClipboard("https://resumeak.onrender.com", "Base URL")}>
                 <Copy className="h-4 w-4" />
               </Button>
             </div>
@@ -381,11 +305,8 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
-    </div>
-  );
-
-  const renderApiKeys = () => (
-    <div className="space-y-6">
+    </div>;
+  const renderApiKeys = () => <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">API Keys</h1>
@@ -411,15 +332,11 @@ const Dashboard = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {apiKeys.length === 0 ? (
-                <TableRow>
+              {apiKeys.length === 0 ? <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                     No API keys found. Create your first API key to get started.
                   </TableCell>
-                </TableRow>
-              ) : (
-                apiKeys.map((apiKey) => (
-                  <TableRow key={apiKey.id} className="hover:bg-gray-50">
+                </TableRow> : apiKeys.map(apiKey => <TableRow key={apiKey.id} className="hover:bg-gray-50">
                     <TableCell>
                       <div className="space-y-2">
                         <div className="font-medium text-gray-900">{apiKey.name}</div>
@@ -427,42 +344,20 @@ const Dashboard = () => {
                           <code className="text-sm bg-gray-100 px-2 py-1 rounded font-mono">
                             {visibleKeys.has(apiKey.id) ? apiKey.key : maskApiKey(apiKey.key)}
                           </code>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyToClipboard(apiKey.key, "API key")}
-                            className="h-7 w-7 p-0"
-                          >
+                          <Button variant="ghost" size="sm" onClick={() => copyToClipboard(apiKey.key, "API key")} className="h-7 w-7 p-0">
                             <Copy className="h-3 w-3" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleKeyVisibility(apiKey.id)}
-                            className="h-7 w-7 p-0"
-                          >
-                            {visibleKeys.has(apiKey.id) ? (
-                              <EyeOff className="h-3 w-3" />
-                            ) : (
-                              <Eye className="h-3 w-3" />
-                            )}
+                          <Button variant="ghost" size="sm" onClick={() => toggleKeyVisibility(apiKey.id)} className="h-7 w-7 p-0">
+                            {visibleKeys.has(apiKey.id) ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => rotateApiKey(apiKey.id)}
-                            className="h-7 w-7 p-0"
-                          >
+                          <Button variant="ghost" size="sm" onClick={() => rotateApiKey(apiKey.id)} className="h-7 w-7 p-0">
                             <RotateCw className="h-3 w-3" />
                           </Button>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge 
-                        variant={apiKey.is_active ? "default" : "secondary"}
-                        className={apiKey.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}
-                      >
+                      <Badge variant={apiKey.is_active ? "default" : "secondary"} className={apiKey.is_active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
                         {apiKey.is_active ? "Active" : "Disabled"}
                       </Badge>
                     </TableCell>
@@ -474,44 +369,24 @@ const Dashboard = () => {
                     </TableCell>
                     <TableCell>
                       <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="sr-only peer"
-                          checked={apiKey.is_active}
-                          onChange={() => toggleKeyStatus(apiKey.id, apiKey.is_active)}
-                        />
+                        <input type="checkbox" className="sr-only peer" checked={apiKey.is_active} onChange={() => toggleKeyStatus(apiKey.id, apiKey.is_active)} />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
                       </label>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteClick(apiKey)}
-                          className="h-8 w-8 p-0 text-gray-400 hover:text-red-600"
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteClick(apiKey)} className="h-8 w-8 p-0 text-gray-400 hover:text-red-600">
                           <Trash2 className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
+                        
                       </div>
                     </TableCell>
-                  </TableRow>
-                ))
-              )}
+                  </TableRow>)}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
-    </div>
-  );
-
+    </div>;
   const renderContent = () => {
     switch (activeSection) {
       case 'overview':
@@ -521,8 +396,7 @@ const Dashboard = () => {
       case 'profile':
         return <ProfileSettings />;
       case 'settings':
-        return (
-          <div className="space-y-6">
+        return <div className="space-y-6">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
               <p className="text-gray-600 mt-1">Manage your account settings and preferences</p>
@@ -532,21 +406,13 @@ const Dashboard = () => {
                 <p className="text-gray-500">Settings panel coming soon...</p>
               </CardContent>
             </Card>
-          </div>
-        );
+          </div>;
       default:
         return renderOverview();
     }
   };
-
-  return (
-    <div className="flex h-screen bg-gray-50">
-      <DashboardSidebar 
-        activeSection={activeSection} 
-        onSectionChange={setActiveSection}
-        isCollapsed={sidebarCollapsed}
-        onToggleCollapse={handleToggleCollapse}
-      />
+  return <div className="flex h-screen bg-gray-50">
+      <DashboardSidebar activeSection={activeSection} onSectionChange={setActiveSection} isCollapsed={sidebarCollapsed} onToggleCollapse={handleToggleCollapse} />
       
       <div className="flex-1 overflow-auto">
         <div className="p-8">
@@ -566,29 +432,17 @@ const Dashboard = () => {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="keyName">Key Name</Label>
-              <Input
-                id="keyName"
-                placeholder="e.g., Production API Key"
-                value={newKeyName}
-                onChange={(e) => setNewKeyName(e.target.value)}
-              />
+              <Input id="keyName" placeholder="e.g., Production API Key" value={newKeyName} onChange={e => setNewKeyName(e.target.value)} />
             </div>
           </div>
           <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setShowCreateDialog(false);
-                setNewKeyName('');
-              }}
-            >
+            <Button variant="outline" onClick={() => {
+            setShowCreateDialog(false);
+            setNewKeyName('');
+          }}>
               Cancel
             </Button>
-            <Button 
-              onClick={createApiKey} 
-              disabled={creating}
-              className="bg-emerald-600 hover:bg-emerald-700"
-            >
+            <Button onClick={createApiKey} disabled={creating} className="bg-emerald-600 hover:bg-emerald-700">
               {creating ? 'Creating...' : 'Create API Key'}
             </Button>
           </DialogFooter>
@@ -610,17 +464,12 @@ const Dashboard = () => {
             <AlertDialogCancel onClick={() => setKeyToDelete(null)}>
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={deleteApiKey}
-              className="bg-red-600 text-white hover:bg-red-700"
-            >
+            <AlertDialogAction onClick={deleteApiKey} className="bg-red-600 text-white hover:bg-red-700">
               Delete API Key
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
+    </div>;
 };
-
 export default Dashboard;
