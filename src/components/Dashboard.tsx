@@ -39,7 +39,7 @@ import {
   AlertCircle,
   CheckCircle,
   Info,
-  MoreHorizontal
+  MoreVertical
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ProfileSettings from './ProfileSettings';
@@ -697,34 +697,59 @@ const Dashboard = () => {
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>API Key Management</CardTitle>
-            <CardDescription>Manage your API keys and monitor usage</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>API Key Management</CardTitle>
+                <CardDescription>Manage your API keys and monitor usage</CardDescription>
+              </div>
               <Button onClick={() => setShowCreateDialog(true)} className="bg-emerald-600 hover:bg-emerald-700">
                 <Plus className="h-4 w-4 mr-2" />
                 Create New API Key
               </Button>
-              
-              <div className="space-y-4">
-                {apiKeys.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No API keys found. Create your first API key to get started.
-                  </div>
-                ) : (
-                  apiKeys.map((apiKey) => (
-                    <div key={apiKey.id} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-medium">{apiKey.name}</h3>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {apiKeys.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No API keys found. Create your first API key to get started.
+                </div>
+              ) : (
+                apiKeys.map((apiKey) => (
+                  <div key={apiKey.id} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-medium">{apiKey.name}</h3>
+                      <div className="flex items-center gap-2">
                         <Badge variant={apiKey.is_active ? "secondary" : "outline"}>
                           {apiKey.is_active ? "active" : "inactive"}
                         </Badge>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="sm" variant="ghost">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-background border border-border">
+                            <DropdownMenuItem onClick={() => rotateApiKey(apiKey.id)}>
+                              <RotateCcw className="h-4 w-4 mr-2" />
+                              Rotate API Key
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteClick(apiKey)}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete API Key
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
-                      <div className="flex items-center space-x-2 mb-2">
-                        <code className="bg-muted px-2 py-1 rounded text-sm flex-1">
-                          {visibleKeys.has(apiKey.id) ? apiKey.key : maskApiKey(apiKey.key)}
-                        </code>
+                    </div>
+                    <div className="flex items-center justify-between mb-2">
+                      <code className="bg-muted px-2 py-1 rounded text-sm flex-1 mr-2">
+                        {visibleKeys.has(apiKey.id) ? apiKey.key : maskApiKey(apiKey.key)}
+                      </code>
+                      <div className="flex items-center gap-1">
                         <Button size="sm" variant="outline" onClick={() => copyToClipboard(apiKey.key, "API key")}>
                           <Copy className="h-4 w-4" />
                         </Button>
@@ -732,57 +757,25 @@ const Dashboard = () => {
                           {visibleKeys.has(apiKey.id) ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </Button>
                       </div>
-                      <div className="flex justify-between text-sm text-muted-foreground mb-3">
-                        <span>Created: {formatDate(apiKey.created_at)}</span>
-                        <span>Last used: {apiKey.last_used_at ? formatDate(apiKey.last_used_at) : "Never"}</span>
-                      </div>
-                      <div className="flex gap-2 items-center mb-3">
-                        <label className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={apiKey.is_active}
-                            onChange={() => toggleKeyStatus(apiKey.id, apiKey.is_active)}
-                            className="rounded"
-                          />
-                          Enabled
-                        </label>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => rotateApiKey(apiKey.id)}>
-                          <RotateCcw className="h-4 w-4 mr-2" />
-                          Rotate
-                        </Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleDeleteClick(apiKey)}>
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </Button>
-                      </div>
                     </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>API Usage Metrics</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold">1,234</div>
-                <p className="text-sm text-muted-foreground">Requests Today</p>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold">98.9%</div>
-                <p className="text-sm text-muted-foreground">Uptime</p>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold">45ms</div>
-                <p className="text-sm text-muted-foreground">Avg Response</p>
-              </div>
+                    <div className="flex justify-between text-sm text-muted-foreground mb-3">
+                      <span>Created: {formatDate(apiKey.created_at)}</span>
+                      <span>Last used: {apiKey.last_used_at ? formatDate(apiKey.last_used_at) : "Never"}</span>
+                    </div>
+                    <div className="flex gap-2 items-center">
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={apiKey.is_active}
+                          onChange={() => toggleKeyStatus(apiKey.id, apiKey.is_active)}
+                          className="rounded"
+                        />
+                        Enabled
+                      </label>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
