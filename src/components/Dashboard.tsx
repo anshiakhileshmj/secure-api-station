@@ -1,3 +1,4 @@
+"use client";
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,19 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { 
-  Copy, 
-  Eye, 
-  EyeOff, 
-  Trash2, 
-  Plus, 
-  RotateCw, 
-  MoreHorizontal, 
-  Home, 
-  User, 
-  Settings,
-  Key,
-  CreditCard,
+  Home,
   Shield,
+  Settings,
+  CreditCard,
+  User,
   ChevronDown,
   ChevronsRight,
   Moon,
@@ -29,9 +22,24 @@ import {
   Search,
   AlertTriangle,
   Activity,
-  CheckCircle,
+  Globe,
+  Eye,
+  EyeOff,
+  Copy,
+  RotateCcw,
+  Trash2,
+  Plus,
+  Download,
   FileText,
-  AlertCircle
+  Key,
+  Lock,
+  Smartphone,
+  BarChart3,
+  LineChart,
+  AlertCircle,
+  CheckCircle,
+  Info,
+  MoreHorizontal
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ProfileSettings from './ProfileSettings';
@@ -42,6 +50,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
@@ -66,6 +75,31 @@ interface DeveloperProfile {
   api_usage_plan: string;
   monthly_request_limit: number;
 }
+
+// Mock data
+const mockTransactions = [
+  { id: "TXN001", amount: 50000, country: "US", riskScore: 85, status: "flagged", timestamp: "2024-01-15 14:30" },
+  { id: "TXN002", amount: 25000, country: "UK", riskScore: 45, status: "approved", timestamp: "2024-01-15 14:25" },
+  { id: "TXN003", amount: 75000, country: "RU", riskScore: 95, status: "blocked", timestamp: "2024-01-15 14:20" },
+  { id: "TXN004", amount: 15000, country: "DE", riskScore: 25, status: "approved", timestamp: "2024-01-15 14:15" },
+  { id: "TXN005", amount: 100000, country: "CN", riskScore: 78, status: "review", timestamp: "2024-01-15 14:10" },
+];
+
+const mockAlerts = [
+  { id: "ALT001", severity: "high", reason: "Sanctions match detected", account: "ACC123", timestamp: "2024-01-15 14:30" },
+  { id: "ALT002", severity: "medium", reason: "Unusual transaction pattern", account: "ACC456", timestamp: "2024-01-15 14:25" },
+  { id: "ALT003", severity: "low", reason: "Geographic anomaly", account: "ACC789", timestamp: "2024-01-15 14:20" },
+];
+
+const continentRiskData = [
+  { continent: "North America", riskScore: 35, transactions: 1250, color: "#22c55e" },
+  { continent: "Europe", riskScore: 42, transactions: 980, color: "#eab308" },
+  { continent: "Asia", riskScore: 78, transactions: 2100, color: "#ef4444" },
+  { continent: "South America", riskScore: 55, transactions: 450, color: "#f97316" },
+  { continent: "Africa", riskScore: 68, transactions: 320, color: "#ef4444" },
+  { continent: "Australia", riskScore: 25, transactions: 180, color: "#22c55e" },
+  { continent: "Antarctica", riskScore: 0, transactions: 0, color: "#6b7280" },
+];
 
 interface SidebarProps {
   activeSection: string;
@@ -156,6 +190,7 @@ const Dashboard = () => {
   const { user } = useAuth();
   const [isDark, setIsDark] = useState(false);
   const [activeSection, setActiveSection] = useState('dashboard');
+  const [selectedTab, setSelectedTab] = useState("overview");
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [developerProfile, setDeveloperProfile] = useState<DeveloperProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -375,324 +410,525 @@ const Dashboard = () => {
     return `${prefix}${masked}${suffix}`;
   };
 
-  // Dashboard Overview Content
-  const renderDashboardContent = () => (
-    <div className="space-y-6">
-      <Tabs defaultValue="overview">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="transactions">Transactions</TabsTrigger>
-          <TabsTrigger value="alerts">Alerts</TabsTrigger>
-          <TabsTrigger value="heatmap">Risk Heatmap</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-        </TabsList>
+  const getRiskColor = (score: number) => {
+    if (score >= 70) return "text-red-500";
+    if (score >= 40) return "text-yellow-500";
+    return "text-green-500";
+  };
 
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+  const getStatusBadge = (status: string) => {
+    const variants = {
+      approved: "bg-green-100 text-green-800",
+      flagged: "bg-yellow-100 text-yellow-800",
+      blocked: "bg-red-100 text-red-800",
+      review: "bg-blue-100 text-blue-800",
+    };
+    return variants[status as keyof typeof variants] || "bg-gray-100 text-gray-800";
+  };
+
+  const DashboardContent: React.FC = () => {
+    return (
+      <div className="space-y-6">
+        <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="transactions">Transactions</TabsTrigger>
+            <TabsTrigger value="alerts">Alerts</TabsTrigger>
+            <TabsTrigger value="heatmap">Risk Heatmap</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
+                  <Activity className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">5,280</div>
+                  <p className="text-xs text-muted-foreground">+12% from last month</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">High Risk</CardTitle>
+                  <AlertTriangle className="h-4 w-4 text-red-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-red-500">156</div>
+                  <p className="text-xs text-muted-foreground">-5% from last week</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Active Cases</CardTitle>
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">23</div>
+                  <p className="text-xs text-muted-foreground">+3 new today</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Compliance Score</CardTitle>
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-500">98.5%</div>
+                  <p className="text-xs text-muted-foreground">+0.2% this month</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Transactions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {mockTransactions.slice(0, 5).map((tx) => (
+                      <div key={tx.id} className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">{tx.id}</p>
+                          <p className="text-sm text-muted-foreground">${tx.amount.toLocaleString()}</p>
+                        </div>
+                        <div className="text-right">
+                          <Badge className={getStatusBadge(tx.status)}>{tx.status}</Badge>
+                          <p className={`text-sm font-medium ${getRiskColor(tx.riskScore)}`}>
+                            Risk: {tx.riskScore}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Active Alerts</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {mockAlerts.map((alert) => (
+                      <div key={alert.id} className="flex items-start space-x-3">
+                        <AlertCircle className={`h-5 w-5 mt-0.5 ${
+                          alert.severity === 'high' ? 'text-red-500' :
+                          alert.severity === 'medium' ? 'text-yellow-500' : 'text-blue-500'
+                        }`} />
+                        <div className="flex-1">
+                          <p className="font-medium">{alert.reason}</p>
+                          <p className="text-sm text-muted-foreground">{alert.account}</p>
+                        </div>
+                        <Badge variant={alert.severity === 'high' ? 'destructive' : 'secondary'}>
+                          {alert.severity}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            <ApiAnalytics />
+          </TabsContent>
+
+          <TabsContent value="transactions" className="space-y-6">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
-                <Activity className="h-4 w-4 text-muted-foreground" />
+              <CardHeader>
+                <CardTitle>Transaction Monitoring</CardTitle>
+                <div className="flex gap-4">
+                  <Input placeholder="Search transactions..." className="max-w-sm" />
+                  <Select>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="flagged">Flagged</SelectItem>
+                      <SelectItem value="blocked">Blocked</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">5,280</div>
-                <p className="text-xs text-muted-foreground">+12% from last month</p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Transaction ID</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Country</TableHead>
+                      <TableHead>Risk Score</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Timestamp</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {mockTransactions.map((tx) => (
+                      <TableRow key={tx.id}>
+                        <TableCell className="font-medium">{tx.id}</TableCell>
+                        <TableCell>${tx.amount.toLocaleString()}</TableCell>
+                        <TableCell>{tx.country}</TableCell>
+                        <TableCell className={getRiskColor(tx.riskScore)}>{tx.riskScore}</TableCell>
+                        <TableCell>
+                          <Badge className={getStatusBadge(tx.status)}>{tx.status}</Badge>
+                        </TableCell>
+                        <TableCell>{tx.timestamp}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
+          </TabsContent>
 
+          <TabsContent value="alerts" className="space-y-6">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">High Risk</CardTitle>
-                <AlertTriangle className="h-4 w-4 text-red-500" />
+              <CardHeader>
+                <CardTitle>Alert Management</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-red-500">156</div>
-                <p className="text-xs text-muted-foreground">-5% from last week</p>
+                <div className="space-y-4">
+                  {mockAlerts.map((alert) => (
+                    <div key={alert.id} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <Badge variant={alert.severity === 'high' ? 'destructive' : 'secondary'}>
+                            {alert.severity}
+                          </Badge>
+                          <span className="font-medium">{alert.id}</span>
+                        </div>
+                        <span className="text-sm text-muted-foreground">{alert.timestamp}</span>
+                      </div>
+                      <p className="text-sm">{alert.reason}</p>
+                      <p className="text-sm text-muted-foreground">Account: {alert.account}</p>
+                      <div className="flex gap-2 mt-3">
+                        <Button size="sm" variant="outline">Investigate</Button>
+                        <Button size="sm" variant="outline">Dismiss</Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
+          </TabsContent>
 
+          <TabsContent value="heatmap" className="space-y-6">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Cases</CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
+              <CardHeader>
+                <CardTitle>Regional Risk Heatmap</CardTitle>
+                <CardDescription>Real-time risk assessment by continent</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">23</div>
-                <p className="text-xs text-muted-foreground">+3 new today</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {continentRiskData.map((region) => (
+                    <div key={region.continent} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-medium">{region.continent}</h3>
+                        <div
+                          className="w-4 h-4 rounded-full"
+                          style={{ backgroundColor: region.color }}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Risk Score</span>
+                          <span className={`font-medium ${getRiskColor(region.riskScore)}`}>
+                            {region.riskScore}
+                          </span>
+                        </div>
+                        <Progress value={region.riskScore} className="h-2" />
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Transactions</span>
+                          <span className="font-medium">{region.transactions.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
+          </TabsContent>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Compliance Score</CardTitle>
-                <CheckCircle className="h-4 w-4 text-green-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-500">98.5%</div>
-                <p className="text-xs text-muted-foreground">+0.2% this month</p>
-              </CardContent>
-            </Card>
-          </div>
-          <ApiAnalytics />
-        </TabsContent>
+          <TabsContent value="analytics" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Risk Trends</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64 flex items-center justify-center border-2 border-dashed border-muted-foreground/25 rounded-lg">
+                    <div className="text-center">
+                      <LineChart className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-muted-foreground">Risk trend chart would appear here</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-        <TabsContent value="transactions">
-          <Card>
-            <CardHeader>
-              <CardTitle>Transaction Monitoring</CardTitle>
-              <CardDescription>Real-time transaction analysis and compliance monitoring</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Transaction monitoring features coming soon...</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Transaction Volume</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64 flex items-center justify-center border-2 border-dashed border-muted-foreground/25 rounded-lg">
+                    <div className="text-center">
+                      <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-muted-foreground">Volume chart would appear here</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+    );
+  };
 
-        <TabsContent value="alerts">
-          <Card>
-            <CardHeader>
-              <CardTitle>Alert Management</CardTitle>
-              <CardDescription>Monitor and manage compliance alerts</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Alert management features coming soon...</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="heatmap">
-          <Card>
-            <CardHeader>
-              <CardTitle>Regional Risk Heatmap</CardTitle>
-              <CardDescription>Real-time risk assessment by continent</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Risk heatmap visualization coming soon...</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="analytics">
-          <Card>
-            <CardHeader>
-              <CardTitle>Analytics</CardTitle>
-              <CardDescription>Advanced analytics and reporting</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">Advanced analytics coming soon...</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-
-  // API Management Content (preserving all existing functionality)
-  const renderApiManagementContent = () => (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>API Key Management</CardTitle>
-          <CardDescription>Manage your API keys and monitor usage</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <Button onClick={() => setShowCreateDialog(true)} className="bg-emerald-600 hover:bg-emerald-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Create New API Key
-            </Button>
-            
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-gray-50">
-                  <TableHead className="font-medium text-gray-700 w-1/4">Name</TableHead>
-                  <TableHead className="font-medium text-gray-700 w-2/5">API Key</TableHead>
-                  <TableHead className="font-medium text-gray-700 w-1/6">Created</TableHead>
-                  <TableHead className="font-medium text-gray-700 w-1/6 text-center">Enabled</TableHead>
-                  <TableHead className="font-medium text-gray-700 w-16"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+  const ApiManagementContent: React.FC = () => {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>API Key Management</CardTitle>
+            <CardDescription>Manage your API keys and monitor usage</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <Button onClick={() => setShowCreateDialog(true)} className="bg-emerald-600 hover:bg-emerald-700">
+                <Plus className="h-4 w-4 mr-2" />
+                Create New API Key
+              </Button>
+              
+              <div className="space-y-4">
                 {apiKeys.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                      No API keys found. Create your first API key to get started.
-                    </TableCell>
-                  </TableRow>
+                  <div className="text-center py-8 text-muted-foreground">
+                    No API keys found. Create your first API key to get started.
+                  </div>
                 ) : (
                   apiKeys.map((apiKey) => (
-                    <TableRow key={apiKey.id} className="hover:bg-gray-50">
-                      <TableCell>
-                        <div className="font-medium text-gray-900">{apiKey.name}</div>
-                        <div className="text-sm text-gray-500">
-                          Last used: {apiKey.last_used_at ? formatDate(apiKey.last_used_at) : "Never"}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2 max-w-md">
-                          <code className="text-sm bg-gray-100 px-2 py-1 rounded font-mono flex-1 truncate">
-                            {visibleKeys.has(apiKey.id) ? apiKey.key : maskApiKey(apiKey.key)}
-                          </code>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => copyToClipboard(apiKey.key, "API key")}
-                            className="h-7 w-7 p-0 flex-shrink-0"
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleKeyVisibility(apiKey.id)}
-                            className="h-7 w-7 p-0 flex-shrink-0"
-                          >
-                            {visibleKeys.has(apiKey.id) ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                          </Button>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-gray-600">
-                        {formatDate(apiKey.created_at)}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <label className="relative inline-flex items-center cursor-pointer">
+                    <div key={apiKey.id} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-medium">{apiKey.name}</h3>
+                        <Badge variant={apiKey.is_active ? "secondary" : "outline"}>
+                          {apiKey.is_active ? "active" : "inactive"}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center space-x-2 mb-2">
+                        <code className="bg-muted px-2 py-1 rounded text-sm flex-1">
+                          {visibleKeys.has(apiKey.id) ? apiKey.key : maskApiKey(apiKey.key)}
+                        </code>
+                        <Button size="sm" variant="outline" onClick={() => copyToClipboard(apiKey.key, "API key")}>
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => toggleKeyVisibility(apiKey.id)}>
+                          {visibleKeys.has(apiKey.id) ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      <div className="flex justify-between text-sm text-muted-foreground mb-3">
+                        <span>Created: {formatDate(apiKey.created_at)}</span>
+                        <span>Last used: {apiKey.last_used_at ? formatDate(apiKey.last_used_at) : "Never"}</span>
+                      </div>
+                      <div className="flex gap-2 items-center mb-3">
+                        <label className="flex items-center gap-2 text-sm">
                           <input
                             type="checkbox"
-                            className="sr-only peer"
                             checked={apiKey.is_active}
                             onChange={() => toggleKeyStatus(apiKey.id, apiKey.is_active)}
+                            className="rounded"
                           />
-                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                          Enabled
                         </label>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-32">
-                            <DropdownMenuItem onClick={() => rotateApiKey(apiKey.id)}>
-                              <RotateCw className="h-4 w-4 mr-2" />
-                              Rotate
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteClick(apiKey)}
-                              className="text-red-600 focus:text-red-600"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => rotateApiKey(apiKey.id)}>
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          Rotate
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleDeleteClick(apiKey)}>
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
                   ))
                 )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>API Usage Metrics</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold">1,234</div>
-              <p className="text-sm text-muted-foreground">Requests Today</p>
+        <Card>
+          <CardHeader>
+            <CardTitle>API Usage Metrics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold">1,234</div>
+                <p className="text-sm text-muted-foreground">Requests Today</p>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold">98.9%</div>
+                <p className="text-sm text-muted-foreground">Uptime</p>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold">45ms</div>
+                <p className="text-sm text-muted-foreground">Avg Response</p>
+              </div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold">98.9%</div>
-              <p className="text-sm text-muted-foreground">Uptime</p>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold">45ms</div>
-              <p className="text-sm text-muted-foreground">Avg Response</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
 
-  const renderSettings = () => (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Account Preferences</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Email Notifications</p>
-              <p className="text-sm text-muted-foreground">Receive alerts via email</p>
+  const SettingsContent: React.FC = () => {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Account Preferences</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Email Notifications</p>
+                <p className="text-sm text-muted-foreground">Receive alerts via email</p>
+              </div>
+              <Switch />
             </div>
-            <Switch />
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">SMS Alerts</p>
-              <p className="text-sm text-muted-foreground">High-priority alerts via SMS</p>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">SMS Alerts</p>
+                <p className="text-sm text-muted-foreground">High-priority alerts via SMS</p>
+              </div>
+              <Switch />
             </div>
-            <Switch />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+            <Separator />
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Two-Factor Authentication</p>
+                <p className="text-sm text-muted-foreground">Enhanced security for your account</p>
+              </div>
+              <Switch defaultChecked />
+            </div>
+          </CardContent>
+        </Card>
 
-  const renderBilling = () => (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Current Plan</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-lg font-semibold">Enterprise Plan</h3>
-              <p className="text-muted-foreground">$299/month</p>
-            </div>
-            <Badge>Active</Badge>
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span>API Calls Used</span>
-              <span>45,230 / 100,000</span>
-            </div>
-            <Progress value={45} />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+        <Card>
+          <CardHeader>
+            <CardTitle>Security Settings</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button variant="outline">
+              <Lock className="h-4 w-4 mr-2" />
+              Change Password
+            </Button>
+            <Button variant="outline">
+              <Smartphone className="h-4 w-4 mr-2" />
+              Manage 2FA
+            </Button>
+            <Button variant="outline">
+              <Globe className="h-4 w-4 mr-2" />
+              IP Restrictions
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
 
-  const renderProfile = () => (
-    <div className="space-y-6">
-      <ProfileSettings />
-    </div>
-  );
+  const BillingContent: React.FC = () => {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Current Plan</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold">Enterprise Plan</h3>
+                <p className="text-muted-foreground">$299/month</p>
+              </div>
+              <Badge>Active</Badge>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span>API Calls Used</span>
+                <span>45,230 / 100,000</span>
+              </div>
+              <Progress value={45} />
+            </div>
+            <div className="flex gap-2 mt-4">
+              <Button>Upgrade Plan</Button>
+              <Button variant="outline">View Usage</Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Billing History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[
+                { date: "2024-01-01", amount: "$299.00", status: "Paid" },
+                { date: "2023-12-01", amount: "$299.00", status: "Paid" },
+                { date: "2023-11-01", amount: "$299.00", status: "Paid" },
+              ].map((invoice, i) => (
+                <div key={i} className="flex items-center justify-between border-b pb-2">
+                  <div>
+                    <p className="font-medium">{invoice.date}</p>
+                    <p className="text-sm text-muted-foreground">{invoice.amount}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">{invoice.status}</Badge>
+                    <Button size="sm" variant="outline">
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
+  const ProfileContent: React.FC = () => {
+    return (
+      <div className="space-y-6">
+        <ProfileSettings />
+      </div>
+    );
+  };
 
   const renderContent = () => {
     switch (activeSection) {
       case "dashboard":
-        return renderDashboardContent();
+        return <DashboardContent />;
       case "api":
-        return renderApiManagementContent();
+        return <ApiManagementContent />;
       case "settings":
-        return renderSettings();
+        return <SettingsContent />;
       case "billing":
-        return renderBilling();
+        return <BillingContent />;
       case "profile":
-        return renderProfile();
+        return <ProfileContent />;
       default:
-        return renderDashboardContent();
+        return <DashboardContent />;
     }
   };
 
@@ -737,7 +973,10 @@ const Dashboard = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Quick search..." className="pl-10 w-64" />
               </div>
-              <NotificationDropdown />
+              <Button variant="outline" size="icon" className="relative">
+                <Bell className="h-4 w-4" />
+                <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full"></span>
+              </Button>
               <Button
                 variant="outline"
                 size="icon"
