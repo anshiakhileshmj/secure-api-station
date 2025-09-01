@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,7 +7,32 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Eye, EyeOff, Trash2, Plus, Edit, RotateCw, MoreHorizontal, Home, User, Settings } from 'lucide-react';
+import { 
+  Copy, 
+  Eye, 
+  EyeOff, 
+  Trash2, 
+  Plus, 
+  RotateCw, 
+  MoreHorizontal, 
+  Home, 
+  User, 
+  Settings,
+  Key,
+  CreditCard,
+  Shield,
+  ChevronDown,
+  ChevronsRight,
+  Moon,
+  Sun,
+  Bell,
+  Search,
+  AlertTriangle,
+  Activity,
+  CheckCircle,
+  FileText,
+  AlertCircle
+} from 'lucide-react';
 import { toast } from 'sonner';
 import ProfileSettings from './ProfileSettings';
 import ApiAnalytics from './ApiAnalytics';
@@ -15,6 +41,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
 
 interface ApiKey {
   id: string;
@@ -37,9 +67,95 @@ interface DeveloperProfile {
   monthly_request_limit: number;
 }
 
+interface SidebarProps {
+  activeSection: string;
+  setActiveSection: (section: string) => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ activeSection, setActiveSection }) => {
+  const [open, setOpen] = useState(true);
+
+  const menuItems = [
+    { id: "dashboard", icon: Home, label: "Dashboard", hasSubmenu: true },
+    { id: "api", icon: Key, label: "API Management" },
+    { id: "settings", icon: Settings, label: "Settings" },
+    { id: "billing", icon: CreditCard, label: "Billing" },
+    { id: "profile", icon: User, label: "Profile" },
+  ];
+
+  return (
+    <nav
+      className={`sticky top-0 h-screen shrink-0 border-r transition-all duration-300 ease-in-out ${
+        open ? 'w-64' : 'w-16'
+      } border-border bg-background p-2 shadow-sm`}
+    >
+      <div className="mb-6 border-b border-border pb-4">
+        <div className="flex cursor-pointer items-center justify-between rounded-md p-2 transition-colors hover:bg-muted">
+          <div className="flex items-center gap-3">
+            <div className="grid size-10 shrink-0 place-content-center rounded-lg bg-primary">
+              <Shield className="h-5 w-5 text-primary-foreground" />
+            </div>
+            {open && (
+              <div>
+                <span className="block text-sm font-semibold text-foreground">AML Dashboard</span>
+                <span className="block text-xs text-muted-foreground">Enterprise</span>
+              </div>
+            )}
+          </div>
+          {open && <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+        </div>
+      </div>
+
+      <div className="space-y-1 mb-8">
+        {menuItems.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setActiveSection(item.id)}
+            className={`relative flex h-11 w-full items-center rounded-md transition-all duration-200 ${
+              activeSection === item.id
+                ? "bg-primary/10 text-primary border-l-2 border-primary"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            <div className="grid h-full w-12 place-content-center">
+              <item.icon className="h-4 w-4" />
+            </div>
+            {open && (
+              <span className="text-sm font-medium transition-opacity duration-200">
+                {item.label}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      <button
+        onClick={() => setOpen(!open)}
+        className="absolute bottom-0 left-0 right-0 border-t border-border transition-colors hover:bg-muted"
+      >
+        <div className="flex items-center p-3">
+          <div className="grid size-10 place-content-center">
+            <ChevronsRight
+              className={`h-4 w-4 transition-transform duration-300 text-muted-foreground ${
+                open ? "rotate-180" : ""
+              }`}
+            />
+          </div>
+          {open && (
+            <span className="text-sm font-medium text-muted-foreground transition-opacity duration-200">
+              Hide
+            </span>
+          )}
+        </div>
+      </button>
+    </nav>
+  );
+};
+
 const Dashboard = () => {
   const { user } = useAuth();
-  const [activeSection, setActiveSection] = useState('overview');
+  const [isDark, setIsDark] = useState(false);
+  const [activeSection, setActiveSection] = useState('dashboard');
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [developerProfile, setDeveloperProfile] = useState<DeveloperProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,6 +165,14 @@ const Dashboard = () => {
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [keyToDelete, setKeyToDelete] = useState<ApiKey | null>(null);
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDark]);
 
   useEffect(() => {
     if (user) {
@@ -251,6 +375,327 @@ const Dashboard = () => {
     return `${prefix}${masked}${suffix}`;
   };
 
+  // Dashboard Overview Content
+  const renderDashboardContent = () => (
+    <div className="space-y-6">
+      <Tabs defaultValue="overview">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="transactions">Transactions</TabsTrigger>
+          <TabsTrigger value="alerts">Alerts</TabsTrigger>
+          <TabsTrigger value="heatmap">Risk Heatmap</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
+                <Activity className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">5,280</div>
+                <p className="text-xs text-muted-foreground">+12% from last month</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">High Risk</CardTitle>
+                <AlertTriangle className="h-4 w-4 text-red-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-500">156</div>
+                <p className="text-xs text-muted-foreground">-5% from last week</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Cases</CardTitle>
+                <FileText className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">23</div>
+                <p className="text-xs text-muted-foreground">+3 new today</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Compliance Score</CardTitle>
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-500">98.5%</div>
+                <p className="text-xs text-muted-foreground">+0.2% this month</p>
+              </CardContent>
+            </Card>
+          </div>
+          <ApiAnalytics />
+        </TabsContent>
+
+        <TabsContent value="transactions">
+          <Card>
+            <CardHeader>
+              <CardTitle>Transaction Monitoring</CardTitle>
+              <CardDescription>Real-time transaction analysis and compliance monitoring</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">Transaction monitoring features coming soon...</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="alerts">
+          <Card>
+            <CardHeader>
+              <CardTitle>Alert Management</CardTitle>
+              <CardDescription>Monitor and manage compliance alerts</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">Alert management features coming soon...</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="heatmap">
+          <Card>
+            <CardHeader>
+              <CardTitle>Regional Risk Heatmap</CardTitle>
+              <CardDescription>Real-time risk assessment by continent</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">Risk heatmap visualization coming soon...</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          <Card>
+            <CardHeader>
+              <CardTitle>Analytics</CardTitle>
+              <CardDescription>Advanced analytics and reporting</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">Advanced analytics coming soon...</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+
+  // API Management Content (preserving all existing functionality)
+  const renderApiManagementContent = () => (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>API Key Management</CardTitle>
+          <CardDescription>Manage your API keys and monitor usage</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Button onClick={() => setShowCreateDialog(true)} className="bg-emerald-600 hover:bg-emerald-700">
+              <Plus className="h-4 w-4 mr-2" />
+              Create New API Key
+            </Button>
+            
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="font-medium text-gray-700 w-1/4">Name</TableHead>
+                  <TableHead className="font-medium text-gray-700 w-2/5">API Key</TableHead>
+                  <TableHead className="font-medium text-gray-700 w-1/6">Created</TableHead>
+                  <TableHead className="font-medium text-gray-700 w-1/6 text-center">Enabled</TableHead>
+                  <TableHead className="font-medium text-gray-700 w-16"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {apiKeys.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                      No API keys found. Create your first API key to get started.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  apiKeys.map((apiKey) => (
+                    <TableRow key={apiKey.id} className="hover:bg-gray-50">
+                      <TableCell>
+                        <div className="font-medium text-gray-900">{apiKey.name}</div>
+                        <div className="text-sm text-gray-500">
+                          Last used: {apiKey.last_used_at ? formatDate(apiKey.last_used_at) : "Never"}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 max-w-md">
+                          <code className="text-sm bg-gray-100 px-2 py-1 rounded font-mono flex-1 truncate">
+                            {visibleKeys.has(apiKey.id) ? apiKey.key : maskApiKey(apiKey.key)}
+                          </code>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => copyToClipboard(apiKey.key, "API key")}
+                            className="h-7 w-7 p-0 flex-shrink-0"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleKeyVisibility(apiKey.id)}
+                            className="h-7 w-7 p-0 flex-shrink-0"
+                          >
+                            {visibleKeys.has(apiKey.id) ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-gray-600">
+                        {formatDate(apiKey.created_at)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="sr-only peer"
+                            checked={apiKey.is_active}
+                            onChange={() => toggleKeyStatus(apiKey.id, apiKey.is_active)}
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                        </label>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-32">
+                            <DropdownMenuItem onClick={() => rotateApiKey(apiKey.id)}>
+                              <RotateCw className="h-4 w-4 mr-2" />
+                              Rotate
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteClick(apiKey)}
+                              className="text-red-600 focus:text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>API Usage Metrics</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold">1,234</div>
+              <p className="text-sm text-muted-foreground">Requests Today</p>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold">98.9%</div>
+              <p className="text-sm text-muted-foreground">Uptime</p>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold">45ms</div>
+              <p className="text-sm text-muted-foreground">Avg Response</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderSettings = () => (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Account Preferences</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">Email Notifications</p>
+              <p className="text-sm text-muted-foreground">Receive alerts via email</p>
+            </div>
+            <Switch />
+          </div>
+          <Separator />
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">SMS Alerts</p>
+              <p className="text-sm text-muted-foreground">High-priority alerts via SMS</p>
+            </div>
+            <Switch />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderBilling = () => (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Current Plan</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold">Enterprise Plan</h3>
+              <p className="text-muted-foreground">$299/month</p>
+            </div>
+            <Badge>Active</Badge>
+          </div>
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <span>API Calls Used</span>
+              <span>45,230 / 100,000</span>
+            </div>
+            <Progress value={45} />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderProfile = () => (
+    <div className="space-y-6">
+      <ProfileSettings />
+    </div>
+  );
+
+  const renderContent = () => {
+    switch (activeSection) {
+      case "dashboard":
+        return renderDashboardContent();
+      case "api":
+        return renderApiManagementContent();
+      case "settings":
+        return renderSettings();
+      case "billing":
+        return renderBilling();
+      case "profile":
+        return renderProfile();
+      default:
+        return renderDashboardContent();
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -263,232 +708,52 @@ const Dashboard = () => {
     );
   }
 
-  const renderOverview = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-1">Monitor your AML-compliant transaction relay service</p>
-        </div>
-        <NotificationDropdown />
-      </div>
-      <ApiAnalytics />
-    </div>
-  );
-
-  const renderApiKeys = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">API Keys</h1>
-          <p className="text-gray-600 mt-1">Manage your production API keys for authentication</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <NotificationDropdown />
-          <Button onClick={() => setShowCreateDialog(true)} className="bg-emerald-600 hover:bg-emerald-700">
-            <Plus className="h-4 w-4 mr-2" />
-            Create API Key
-          </Button>
-        </div>
-      </div>
-
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-gray-50">
-                <TableHead className="font-medium text-gray-700 w-1/4">Name</TableHead>
-                <TableHead className="font-medium text-gray-700 w-2/5">API Key</TableHead>
-                <TableHead className="font-medium text-gray-700 w-1/6">Created</TableHead>
-                <TableHead className="font-medium text-gray-700 w-1/6 text-center">Enabled</TableHead>
-                <TableHead className="font-medium text-gray-700 w-16"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {apiKeys.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                    No API keys found. Create your first API key to get started.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                apiKeys.map((apiKey) => (
-                  <TableRow key={apiKey.id} className="hover:bg-gray-50">
-                    <TableCell>
-                      <div className="font-medium text-gray-900">{apiKey.name}</div>
-                      <div className="text-sm text-gray-500">
-                        Last used: {apiKey.last_used_at ? formatDate(apiKey.last_used_at) : "Never"}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2 max-w-md">
-                        <code className="text-sm bg-gray-100 px-2 py-1 rounded font-mono flex-1 truncate">
-                          {visibleKeys.has(apiKey.id) ? apiKey.key : maskApiKey(apiKey.key)}
-                        </code>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => copyToClipboard(apiKey.key, "API key")}
-                          className="h-7 w-7 p-0 flex-shrink-0"
-                        >
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleKeyVisibility(apiKey.id)}
-                          className="h-7 w-7 p-0 flex-shrink-0"
-                        >
-                          {visibleKeys.has(apiKey.id) ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                        </Button>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-gray-600">
-                      {formatDate(apiKey.created_at)}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="sr-only peer"
-                          checked={apiKey.is_active}
-                          onChange={() => toggleKeyStatus(apiKey.id, apiKey.is_active)}
-                        />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                      </label>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-32">
-                          <DropdownMenuItem onClick={() => rotateApiKey(apiKey.id)}>
-                            <RotateCw className="h-4 w-4 mr-2" />
-                            Rotate
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteClick(apiKey)}
-                            className="text-red-600 focus:text-red-600"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  const renderProfile = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Profile Settings</h1>
-          <p className="text-gray-600 mt-1">Manage your account settings and preferences</p>
-        </div>
-        <NotificationDropdown />
-      </div>
-      <ProfileSettings />
-    </div>
-  );
-
-  const renderSettings = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-          <p className="text-gray-600 mt-1">Manage your account settings and preferences</p>
-        </div>
-        <NotificationDropdown />
-      </div>
-      <Card>
-        <CardContent className="p-6">
-          <p className="text-gray-500">Settings panel coming soon...</p>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  const renderContent = () => {
-    switch (activeSection) {
-      case 'overview':
-        return renderOverview();
-      case 'keys':
-        return renderApiKeys();
-      case 'profile':
-        return renderProfile();
-      case 'settings':
-        return renderSettings();
-      default:
-        return renderOverview();
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header Navigation */}
-      <div className="p-4 flex justify-center">
-        <nav className="flex items-center space-x-1 bg-white/10 backdrop-blur-md border border-white/30 rounded-2xl p-2 shadow-xl">
-          <button 
-            onClick={() => setActiveSection('overview')}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-inter tracking-tighter transition-all duration-300 hover:scale-105 active:scale-95 ${
-              activeSection === 'overview' 
-                ? 'bg-white/30 backdrop-blur-md text-foreground shadow-lg' 
-                : 'text-muted-foreground hover:bg-white/10'
-            }`}
-          >
-            <Home className="h-4 w-4" />
-            Overview
-          </button>
-          <button 
-            onClick={() => setActiveSection('keys')}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-inter tracking-tighter transition-all duration-300 hover:scale-105 active:scale-95 ${
-              activeSection === 'keys' 
-                ? 'bg-white/30 backdrop-blur-md text-foreground shadow-lg' 
-                : 'text-muted-foreground hover:bg-white/10'
-            }`}
-          >
-            <User className="h-4 w-4" />
-            API Keys
-          </button>
-          <button 
-            onClick={() => setActiveSection('profile')}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-inter tracking-tighter transition-all duration-300 hover:scale-105 active:scale-95 ${
-              activeSection === 'profile' 
-                ? 'bg-white/30 backdrop-blur-md text-foreground shadow-lg' 
-                : 'text-muted-foreground hover:bg-white/10'
-            }`}
-          >
-            <User className="h-4 w-4" />
-            Profile
-          </button>
-          <button 
-            onClick={() => setActiveSection('settings')}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-inter tracking-tighter transition-all duration-300 hover:scale-105 active:scale-95 ${
-              activeSection === 'settings' 
-                ? 'bg-white/30 backdrop-blur-md text-foreground shadow-lg' 
-                : 'text-muted-foreground hover:bg-white/10'
-            }`}
-          >
-            <Settings className="h-4 w-4" />
-            Settings
-          </button>
-        </nav>
-      </div>
+    <div className={`flex min-h-screen w-full ${isDark ? 'dark' : ''}`}>
+      <div className="flex w-full bg-background text-foreground">
+        <Sidebar activeSection={activeSection} setActiveSection={setActiveSection} />
+        
+        <div className="flex-1 bg-background p-6 overflow-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">
+                {activeSection === "dashboard" && "AML Dashboard"}
+                {activeSection === "api" && "API Management"}
+                {activeSection === "settings" && "Settings"}
+                {activeSection === "billing" && "Billing"}
+                {activeSection === "profile" && "Profile"}
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                {activeSection === "dashboard" && "Monitor transactions and compliance in real-time"}
+                {activeSection === "api" && "Manage your API keys and monitor usage"}
+                {activeSection === "settings" && "Configure your account preferences"}
+                {activeSection === "billing" && "Manage your subscription and billing"}
+                {activeSection === "profile" && "Update your personal information"}
+              </p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Quick search..." className="pl-10 w-64" />
+              </div>
+              <NotificationDropdown />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setIsDark(!isDark)}
+              >
+                {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
+              <Button variant="outline" size="icon">
+                <User className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
 
-      {/* Main Content */}
-      <div className="p-8">
-        {renderContent()}
+          {/* Main Content */}
+          {renderContent()}
+        </div>
       </div>
 
       {/* Create API Key Dialog */}
