@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Home, Shield, Settings, CreditCard, User, ChevronDown, ChevronsRight, Moon, Sun, Bell, Search, AlertTriangle, Activity, Globe, Eye, EyeOff, Copy, RotateCcw, Trash2, Plus, Download, FileText, Key, Lock, Smartphone, BarChart3, LineChart, AlertCircle, CheckCircle, Info, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
-import ProfileSettings from './ProfileSettings';
 import ApiAnalytics from './ApiAnalytics';
 import NotificationDropdown from './NotificationDropdown';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -22,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+
 interface ApiKey {
   id: string;
   name: string;
@@ -134,10 +134,12 @@ const continentRiskData = [{
   transactions: 0,
   color: "#6b7280"
 }];
+
 interface SidebarProps {
   activeSection: string;
   setActiveSection: (section: string) => void;
 }
+
 const Sidebar: React.FC<SidebarProps> = ({
   activeSection,
   setActiveSection
@@ -203,6 +205,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       </button>
     </nav>;
 };
+
 const Dashboard = () => {
   const {
     user
@@ -219,6 +222,7 @@ const Dashboard = () => {
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [keyToDelete, setKeyToDelete] = useState<ApiKey | null>(null);
+
   useEffect(() => {
     if (isDark) {
       document.documentElement.classList.add('dark');
@@ -232,6 +236,7 @@ const Dashboard = () => {
       fetchApiKeys();
     }
   }, [user]);
+
   const fetchDeveloperProfile = async () => {
     try {
       const {
@@ -408,6 +413,7 @@ const Dashboard = () => {
     };
     return variants[status as keyof typeof variants] || "bg-gray-100 text-gray-800";
   };
+
   const DashboardContent: React.FC = () => {
     return <div className="space-y-6">
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
@@ -657,6 +663,7 @@ const Dashboard = () => {
         </Tabs>
       </div>;
   };
+
   const ApiManagementContent: React.FC = () => {
     return <div className="space-y-6">
         <Card>
@@ -683,23 +690,6 @@ const Dashboard = () => {
                         <Badge variant={apiKey.is_active ? "secondary" : "outline"}>
                           {apiKey.is_active ? "active" : "inactive"}
                         </Badge>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button size="sm" variant="ghost">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="bg-background border border-border">
-                            <DropdownMenuItem onClick={() => rotateApiKey(apiKey.id)}>
-                              <RotateCcw className="h-4 w-4 mr-2" />
-                              Rotate API Key
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDeleteClick(apiKey)} className="text-red-600 hover:text-red-700">
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete API Key
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
                       </div>
                     </div>
                     <div className="flex items-center justify-between mb-2">
@@ -719,11 +709,28 @@ const Dashboard = () => {
                       <span>Created: {formatDate(apiKey.created_at)}</span>
                       <span>Last used: {apiKey.last_used_at ? formatDate(apiKey.last_used_at) : "Never"}</span>
                     </div>
-                    <div className="flex gap-2 items-center">
+                    <div className="flex justify-between items-center">
                       <label className="flex items-center gap-2 text-sm">
                         <input type="checkbox" checked={apiKey.is_active} onChange={() => toggleKeyStatus(apiKey.id, apiKey.is_active)} className="rounded" />
                         Enabled
                       </label>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="ghost">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-background border border-border">
+                          <DropdownMenuItem onClick={() => rotateApiKey(apiKey.id)}>
+                            <RotateCcw className="h-4 w-4 mr-2" />
+                            Rotate API Key
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDeleteClick(apiKey)} className="text-red-600 hover:text-red-700">
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete API Key
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>)}
             </div>
@@ -731,6 +738,7 @@ const Dashboard = () => {
         </Card>
       </div>;
   };
+
   const SettingsContent: React.FC = () => {
     return <div className="space-y-6">
         <Card>
@@ -769,25 +777,25 @@ const Dashboard = () => {
             <CardTitle>Security Settings</CardTitle>
           </CardHeader>
           <CardContent>
-  <div className="flex gap-4">
-    <Button variant="outline">
-      <Lock className="h-4 w-4 mr-2" />
-      Change Password
-    </Button>
-    <Button variant="outline">
-      <Smartphone className="h-4 w-4 mr-2" />
-      Manage 2FA
-    </Button>
-    <Button variant="outline">
-      <Globe className="h-4 w-4 mr-2" />
-      IP Restrictions
-    </Button>
-  </div>
-        </CardContent>
-
+            <div className="flex gap-4">
+              <Button variant="outline">
+                <Lock className="h-4 w-4 mr-2" />
+                Change Password
+              </Button>
+              <Button variant="outline">
+                <Smartphone className="h-4 w-4 mr-2" />
+                Manage 2FA
+              </Button>
+              <Button variant="outline">
+                <Globe className="h-4 w-4 mr-2" />
+                IP Restrictions
+              </Button>
+            </div>
+          </CardContent>
         </Card>
       </div>;
   };
+
   const BillingContent: React.FC = () => {
     return <div className="space-y-6">
         <Card>
@@ -851,11 +859,61 @@ const Dashboard = () => {
         </Card>
       </div>;
   };
+
   const ProfileContent: React.FC = () => {
-    return <div className="space-y-6">
-        <ProfileSettings />
-      </div>;
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Personal Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">First Name</label>
+                <Input defaultValue="John" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Last Name</label>
+                <Input defaultValue="Doe" />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Email</label>
+              <Input defaultValue="john.doe@company.com" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Company</label>
+              <Input defaultValue="Acme Corp" />
+            </div>
+            <Button>Save Changes</Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Activity Log</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {[
+                { action: "API key created", time: "2 hours ago" },
+                { action: "Password changed", time: "1 day ago" },
+                { action: "Login from new device", time: "3 days ago" },
+                { action: "Profile updated", time: "1 week ago" },
+              ].map((activity, i) => (
+                <div key={i} className="flex items-center justify-between">
+                  <span className="text-sm">{activity.action}</span>
+                  <span className="text-sm text-muted-foreground">{activity.time}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   };
+
   const renderContent = () => {
     switch (activeSection) {
       case "dashboard":
