@@ -132,7 +132,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, setActiveSection }) =>
             {open && (
               <div>
                 <span className="block text-sm font-semibold text-foreground">AML Dashboard</span>
-                <span className="block text-xs text-muted-foreground">Enterprise</span>
               </div>
             )}
           </div>
