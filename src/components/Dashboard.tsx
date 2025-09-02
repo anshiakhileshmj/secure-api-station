@@ -683,7 +683,7 @@ const Dashboard = () => {
                 <CardTitle>API Key Management</CardTitle>
                 <CardDescription>Manage your API keys and monitor usage</CardDescription>
               </div>
-              <Button onClick={() => setShowCreateDialog(true)} className="bg-emerald-600 hover:bg-emerald-700">
+              <Button onClick={() => setShowCreateDialog(true)} className="bg-black hover:bg-gray-800 text-white">
                 <Plus className="h-4 w-4 mr-2" />
                 Create New API Key
               </Button>
@@ -973,6 +973,13 @@ const Dashboard = () => {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <Button 
+                onClick={() => window.open('https://api.stablepe.com', '_blank')}
+                className="bg-black hover:bg-gray-800 text-white"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Check Documentation
+              </Button>
               <Button variant="outline" size="icon" className="relative">
                 <Bell className="h-4 w-4" />
                 <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full"></span>
@@ -1010,7 +1017,7 @@ const Dashboard = () => {
           }}>
               Cancel
             </Button>
-            <Button onClick={createApiKey} disabled={creating} className="bg-emerald-600 hover:bg-emerald-700">
+            <Button onClick={createApiKey} disabled={creating} className="bg-black hover:bg-gray-800 text-white">
               {creating ? 'Creating...' : 'Create API Key'}
             </Button>
           </DialogFooter>
