@@ -821,20 +821,21 @@ const Dashboard = () => {
           <CardHeader>
             <CardTitle>Security Settings</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <Button variant="outline">
-              <Lock className="h-4 w-4 mr-2" />
-              Change Password
-            </Button>
-            <Button variant="outline">
-              <Smartphone className="h-4 w-4 mr-2" />
-              Manage 2FA
-            </Button>
-            <Button variant="outline">
-              <Globe className="h-4 w-4 mr-2" />
-              IP Restrictions
-            </Button>
-          </CardContent>
+          <CardContent className="space-y-4">
+  <Button variant="outline" className="w-full">
+    <Lock className="h-4 w-4 mr-2" />
+    Change Password
+  </Button>
+  <Button variant="outline" className="w-full">
+    <Smartphone className="h-4 w-4 mr-2" />
+    Manage 2FA
+  </Button>
+  <Button variant="outline" className="w-full">
+    <Globe className="h-4 w-4 mr-2" />
+    IP Restrictions
+  </Button>
+</CardContent>
+
         </Card>
       </div>
     );
