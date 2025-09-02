@@ -821,7 +821,7 @@ const Dashboard = () => {
           <CardHeader>
             <CardTitle>Security Settings</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3">
             <Button variant="outline">
               <Lock className="h-4 w-4 mr-2" />
               Change Password
