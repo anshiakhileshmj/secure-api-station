@@ -207,10 +207,17 @@ const Sidebar: React.FC<SidebarProps> = ({
 };
 
 const Dashboard = () => {
-  const {
-    user
-  } = useAuth();
-  const [isDark, setIsDark] = useState(false);
+  const { user } = useAuth();
+  
+  // Load dark mode preference from localStorage on initialization
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('darkMode');
+      return saved ? JSON.parse(saved) : false;
+    }
+    return false;
+  });
+  
   const [activeSection, setActiveSection] = useState('dashboard');
   const [selectedTab, setSelectedTab] = useState("overview");
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
@@ -229,7 +236,10 @@ const Dashboard = () => {
     } else {
       document.documentElement.classList.remove('dark');
     }
+    // Save preference to localStorage whenever it changes
+    localStorage.setItem('darkMode', JSON.stringify(isDark));
   }, [isDark]);
+
   useEffect(() => {
     if (user) {
       fetchDeveloperProfile();
@@ -1030,4 +1040,5 @@ const Dashboard = () => {
       </AlertDialog>
     </div>;
 };
+
 export default Dashboard;
