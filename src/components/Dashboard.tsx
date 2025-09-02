@@ -8,39 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Home,
-  Shield,
-  Settings,
-  CreditCard,
-  User,
-  ChevronDown,
-  ChevronsRight,
-  Moon,
-  Sun,
-  Bell,
-  Search,
-  AlertTriangle,
-  Activity,
-  Globe,
-  Eye,
-  EyeOff,
-  Copy,
-  RotateCcw,
-  Trash2,
-  Plus,
-  Download,
-  FileText,
-  Key,
-  Lock,
-  Smartphone,
-  BarChart3,
-  LineChart,
-  AlertCircle,
-  CheckCircle,
-  Info,
-  MoreVertical
-} from 'lucide-react';
+import { Home, Shield, Settings, CreditCard, User, ChevronDown, ChevronsRight, Moon, Sun, Bell, Search, AlertTriangle, Activity, Globe, Eye, EyeOff, Copy, RotateCcw, Trash2, Plus, Download, FileText, Key, Lock, Smartphone, BarChart3, LineChart, AlertCircle, CheckCircle, Info, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import ProfileSettings from './ProfileSettings';
 import ApiAnalytics from './ApiAnalytics';
@@ -54,7 +22,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-
 interface ApiKey {
   id: string;
   name: string;
@@ -67,7 +34,6 @@ interface ApiKey {
   expires_at: string | null;
   rate_limit_per_minute: number;
 }
-
 interface DeveloperProfile {
   partner_id: string;
   company_name: string | null;
@@ -77,116 +43,170 @@ interface DeveloperProfile {
 }
 
 // Mock data
-const mockTransactions = [
-  { id: "TXN001", amount: 50000, country: "US", riskScore: 85, status: "flagged", timestamp: "2024-01-15 14:30" },
-  { id: "TXN002", amount: 25000, country: "UK", riskScore: 45, status: "approved", timestamp: "2024-01-15 14:25" },
-  { id: "TXN003", amount: 75000, country: "RU", riskScore: 95, status: "blocked", timestamp: "2024-01-15 14:20" },
-  { id: "TXN004", amount: 15000, country: "DE", riskScore: 25, status: "approved", timestamp: "2024-01-15 14:15" },
-  { id: "TXN005", amount: 100000, country: "CN", riskScore: 78, status: "review", timestamp: "2024-01-15 14:10" },
-];
-
-const mockAlerts = [
-  { id: "ALT001", severity: "high", reason: "Sanctions match detected", account: "ACC123", timestamp: "2024-01-15 14:30" },
-  { id: "ALT002", severity: "medium", reason: "Unusual transaction pattern", account: "ACC456", timestamp: "2024-01-15 14:25" },
-  { id: "ALT003", severity: "low", reason: "Geographic anomaly", account: "ACC789", timestamp: "2024-01-15 14:20" },
-];
-
-const continentRiskData = [
-  { continent: "North America", riskScore: 35, transactions: 1250, color: "#22c55e" },
-  { continent: "Europe", riskScore: 42, transactions: 980, color: "#eab308" },
-  { continent: "Asia", riskScore: 78, transactions: 2100, color: "#ef4444" },
-  { continent: "South America", riskScore: 55, transactions: 450, color: "#f97316" },
-  { continent: "Africa", riskScore: 68, transactions: 320, color: "#ef4444" },
-  { continent: "Australia", riskScore: 25, transactions: 180, color: "#22c55e" },
-  { continent: "Antarctica", riskScore: 0, transactions: 0, color: "#6b7280" },
-];
-
+const mockTransactions = [{
+  id: "TXN001",
+  amount: 50000,
+  country: "US",
+  riskScore: 85,
+  status: "flagged",
+  timestamp: "2024-01-15 14:30"
+}, {
+  id: "TXN002",
+  amount: 25000,
+  country: "UK",
+  riskScore: 45,
+  status: "approved",
+  timestamp: "2024-01-15 14:25"
+}, {
+  id: "TXN003",
+  amount: 75000,
+  country: "RU",
+  riskScore: 95,
+  status: "blocked",
+  timestamp: "2024-01-15 14:20"
+}, {
+  id: "TXN004",
+  amount: 15000,
+  country: "DE",
+  riskScore: 25,
+  status: "approved",
+  timestamp: "2024-01-15 14:15"
+}, {
+  id: "TXN005",
+  amount: 100000,
+  country: "CN",
+  riskScore: 78,
+  status: "review",
+  timestamp: "2024-01-15 14:10"
+}];
+const mockAlerts = [{
+  id: "ALT001",
+  severity: "high",
+  reason: "Sanctions match detected",
+  account: "ACC123",
+  timestamp: "2024-01-15 14:30"
+}, {
+  id: "ALT002",
+  severity: "medium",
+  reason: "Unusual transaction pattern",
+  account: "ACC456",
+  timestamp: "2024-01-15 14:25"
+}, {
+  id: "ALT003",
+  severity: "low",
+  reason: "Geographic anomaly",
+  account: "ACC789",
+  timestamp: "2024-01-15 14:20"
+}];
+const continentRiskData = [{
+  continent: "North America",
+  riskScore: 35,
+  transactions: 1250,
+  color: "#22c55e"
+}, {
+  continent: "Europe",
+  riskScore: 42,
+  transactions: 980,
+  color: "#eab308"
+}, {
+  continent: "Asia",
+  riskScore: 78,
+  transactions: 2100,
+  color: "#ef4444"
+}, {
+  continent: "South America",
+  riskScore: 55,
+  transactions: 450,
+  color: "#f97316"
+}, {
+  continent: "Africa",
+  riskScore: 68,
+  transactions: 320,
+  color: "#ef4444"
+}, {
+  continent: "Australia",
+  riskScore: 25,
+  transactions: 180,
+  color: "#22c55e"
+}, {
+  continent: "Antarctica",
+  riskScore: 0,
+  transactions: 0,
+  color: "#6b7280"
+}];
 interface SidebarProps {
   activeSection: string;
   setActiveSection: (section: string) => void;
 }
-
-const Sidebar: React.FC<SidebarProps> = ({ activeSection, setActiveSection }) => {
+const Sidebar: React.FC<SidebarProps> = ({
+  activeSection,
+  setActiveSection
+}) => {
   const [open, setOpen] = useState(true);
-
-  const menuItems = [
-    { id: "dashboard", icon: Home, label: "Dashboard", hasSubmenu: true },
-    { id: "api", icon: Key, label: "API Management" },
-    { id: "settings", icon: Settings, label: "Settings" },
-    { id: "billing", icon: CreditCard, label: "Billing" },
-    { id: "profile", icon: User, label: "Profile" },
-  ];
-
-  return (
-    <nav
-      className={`sticky top-0 h-screen shrink-0 border-r transition-all duration-300 ease-in-out ${
-        open ? 'w-64' : 'w-16'
-      } border-border bg-background p-2 shadow-sm`}
-    >
+  const menuItems = [{
+    id: "dashboard",
+    icon: Home,
+    label: "Dashboard",
+    hasSubmenu: true
+  }, {
+    id: "api",
+    icon: Key,
+    label: "API Management"
+  }, {
+    id: "settings",
+    icon: Settings,
+    label: "Settings"
+  }, {
+    id: "billing",
+    icon: CreditCard,
+    label: "Billing"
+  }, {
+    id: "profile",
+    icon: User,
+    label: "Profile"
+  }];
+  return <nav className={`sticky top-0 h-screen shrink-0 border-r transition-all duration-300 ease-in-out ${open ? 'w-64' : 'w-16'} border-border bg-background p-2 shadow-sm`}>
       <div className="mb-6 border-b border-border pb-4">
         <div className="flex cursor-pointer items-center justify-between rounded-md p-2 transition-colors hover:bg-muted">
           <div className="flex items-center gap-3">
             <div className="grid size-10 shrink-0 place-content-center rounded-lg bg-primary">
               <Shield className="h-5 w-5 text-primary-foreground" />
             </div>
-            {open && (
-              <div>
+            {open && <div>
                 <span className="block text-sm font-semibold text-foreground">AML Dashboard</span>
-              </div>
-            )}
+              </div>}
           </div>
-          {open && <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          {open}
         </div>
       </div>
 
       <div className="space-y-1 mb-8">
-        {menuItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setActiveSection(item.id)}
-            className={`relative flex h-11 w-full items-center rounded-md transition-all duration-200 ${
-              activeSection === item.id
-                ? "bg-primary/10 text-primary border-l-2 border-primary"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            }`}
-          >
+        {menuItems.map(item => <button key={item.id} onClick={() => setActiveSection(item.id)} className={`relative flex h-11 w-full items-center rounded-md transition-all duration-200 ${activeSection === item.id ? "bg-primary/10 text-primary border-l-2 border-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
             <div className="grid h-full w-12 place-content-center">
               <item.icon className="h-4 w-4" />
             </div>
-            {open && (
-              <span className="text-sm font-medium transition-opacity duration-200">
+            {open && <span className="text-sm font-medium transition-opacity duration-200">
                 {item.label}
-              </span>
-            )}
-          </button>
-        ))}
+              </span>}
+          </button>)}
       </div>
 
-      <button
-        onClick={() => setOpen(!open)}
-        className="absolute bottom-0 left-0 right-0 border-t border-border transition-colors hover:bg-muted"
-      >
+      <button onClick={() => setOpen(!open)} className="absolute bottom-0 left-0 right-0 border-t border-border transition-colors hover:bg-muted">
         <div className="flex items-center p-3">
           <div className="grid size-10 place-content-center">
-            <ChevronsRight
-              className={`h-4 w-4 transition-transform duration-300 text-muted-foreground ${
-                open ? "rotate-180" : ""
-              }`}
-            />
+            <ChevronsRight className={`h-4 w-4 transition-transform duration-300 text-muted-foreground ${open ? "rotate-180" : ""}`} />
           </div>
-          {open && (
-            <span className="text-sm font-medium text-muted-foreground transition-opacity duration-200">
+          {open && <span className="text-sm font-medium text-muted-foreground transition-opacity duration-200">
               Hide
-            </span>
-          )}
+            </span>}
         </div>
       </button>
-    </nav>
-  );
+    </nav>;
 };
-
 const Dashboard = () => {
-  const { user } = useAuth();
+  const {
+    user
+  } = useAuth();
   const [isDark, setIsDark] = useState(false);
   const [activeSection, setActiveSection] = useState('dashboard');
   const [selectedTab, setSelectedTab] = useState("overview");
@@ -199,7 +219,6 @@ const Dashboard = () => {
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [keyToDelete, setKeyToDelete] = useState<ApiKey | null>(null);
-
   useEffect(() => {
     if (isDark) {
       document.documentElement.classList.add('dark');
@@ -207,22 +226,18 @@ const Dashboard = () => {
       document.documentElement.classList.remove('dark');
     }
   }, [isDark]);
-
   useEffect(() => {
     if (user) {
       fetchDeveloperProfile();
       fetchApiKeys();
     }
   }, [user]);
-
   const fetchDeveloperProfile = async () => {
     try {
-      const { data, error } = await supabase
-        .from('developer_profiles')
-        .select('partner_id, company_name, website, api_usage_plan, monthly_request_limit')
-        .eq('user_id', user?.id)
-        .single();
-      
+      const {
+        data,
+        error
+      } = await supabase.from('developer_profiles').select('partner_id, company_name, website, api_usage_plan, monthly_request_limit').eq('user_id', user?.id).single();
       if (error) throw error;
       setDeveloperProfile(data);
     } catch (error) {
@@ -230,15 +245,14 @@ const Dashboard = () => {
       toast.error('Failed to fetch developer profile');
     }
   };
-
   const fetchApiKeys = async () => {
     try {
-      const { data, error } = await supabase
-        .from('api_keys')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
-      
+      const {
+        data,
+        error
+      } = await supabase.from('api_keys').select('*').eq('user_id', user?.id).order('created_at', {
+        ascending: false
+      });
       if (error) throw error;
       setApiKeys(data || []);
     } catch (error) {
@@ -248,49 +262,37 @@ const Dashboard = () => {
       setLoading(false);
     }
   };
-
   const generateApiKey = () => {
     const prefix = 'wm_';
-    const randomPart = Array.from(crypto.getRandomValues(new Uint8Array(16)))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('')
-      .toUpperCase();
+    const randomPart = Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
     return prefix + randomPart;
   };
-
   const createApiKey = async () => {
     if (!newKeyName.trim()) {
       toast.error('Please enter a name for your API key');
       return;
     }
-
     setCreating(true);
     try {
       const apiKey = generateApiKey();
-      const { data: profile, error: profileError } = await supabase
-        .from('developer_profiles')
-        .select('partner_id')
-        .eq('user_id', user?.id)
-        .single();
-      
+      const {
+        data: profile,
+        error: profileError
+      } = await supabase.from('developer_profiles').select('partner_id').eq('user_id', user?.id).single();
       if (profileError) throw profileError;
-
-      const { data, error } = await supabase
-        .from('api_keys')
-        .insert({
-          name: newKeyName.trim(),
-          key: apiKey,
-          key_hash: await hashApiKey(apiKey),
-          partner_id: profile.partner_id,
-          user_id: user?.id,
-          is_active: true,
-          rate_limit_per_minute: 60
-        })
-        .select()
-        .single();
-      
+      const {
+        data,
+        error
+      } = await supabase.from('api_keys').insert({
+        name: newKeyName.trim(),
+        key: apiKey,
+        key_hash: await hashApiKey(apiKey),
+        partner_id: profile.partner_id,
+        user_id: user?.id,
+        is_active: true,
+        rate_limit_per_minute: 60
+      }).select().single();
       if (error) throw error;
-
       setApiKeys(prev => [data, ...prev]);
       setNewKeyName('');
       setShowCreateDialog(false);
@@ -302,7 +304,6 @@ const Dashboard = () => {
       setCreating(false);
     }
   };
-
   const hashApiKey = async (key: string) => {
     const encoder = new TextEncoder();
     const data = encoder.encode(key);
@@ -310,12 +311,10 @@ const Dashboard = () => {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   };
-
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied to clipboard!`);
   };
-
   const toggleKeyVisibility = (keyId: string) => {
     const newVisible = new Set(visibleKeys);
     if (newVisible.has(keyId)) {
@@ -325,40 +324,35 @@ const Dashboard = () => {
     }
     setVisibleKeys(newVisible);
   };
-
   const toggleKeyStatus = async (keyId: string, currentStatus: boolean) => {
     try {
-      const { error } = await supabase
-        .from('api_keys')
-        .update({ is_active: !currentStatus })
-        .eq('id', keyId);
-      
+      const {
+        error
+      } = await supabase.from('api_keys').update({
+        is_active: !currentStatus
+      }).eq('id', keyId);
       if (error) throw error;
-
-      setApiKeys(prev => prev.map(key => 
-        key.id === keyId ? { ...key, is_active: !currentStatus } : key
-      ));
+      setApiKeys(prev => prev.map(key => key.id === keyId ? {
+        ...key,
+        is_active: !currentStatus
+      } : key));
       toast.success(`API key ${!currentStatus ? 'enabled' : 'disabled'} successfully!`);
     } catch (error) {
       console.error('Error toggling API key status:', error);
       toast.error('Failed to update API key status');
     }
   };
-
   const rotateApiKey = async (keyId: string) => {
     try {
       const newApiKey = generateApiKey();
-      const { error } = await supabase
-        .from('api_keys')
-        .update({
-          key: newApiKey,
-          key_hash: await hashApiKey(newApiKey),
-          last_used_at: null
-        })
-        .eq('id', keyId);
-      
+      const {
+        error
+      } = await supabase.from('api_keys').update({
+        key: newApiKey,
+        key_hash: await hashApiKey(newApiKey),
+        last_used_at: null
+      }).eq('id', keyId);
       if (error) throw error;
-
       await fetchApiKeys();
       toast.success('API key rotated successfully!');
     } catch (error) {
@@ -366,23 +360,17 @@ const Dashboard = () => {
       toast.error('Failed to rotate API key');
     }
   };
-
   const handleDeleteClick = (apiKey: ApiKey) => {
     setKeyToDelete(apiKey);
     setDeleteDialogOpen(true);
   };
-
   const deleteApiKey = async () => {
     if (!keyToDelete) return;
-
     try {
-      const { error } = await supabase
-        .from('api_keys')
-        .delete()
-        .eq('id', keyToDelete.id);
-      
+      const {
+        error
+      } = await supabase.from('api_keys').delete().eq('id', keyToDelete.id);
       if (error) throw error;
-
       setApiKeys(prev => prev.filter(key => key.id !== keyToDelete.id));
       toast.success('API key deleted successfully!');
       setDeleteDialogOpen(false);
@@ -392,7 +380,6 @@ const Dashboard = () => {
       toast.error('Failed to delete API key');
     }
   };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       day: 'numeric',
@@ -400,7 +387,6 @@ const Dashboard = () => {
       year: 'numeric'
     });
   };
-
   const maskApiKey = (key: string) => {
     if (key.length <= 8) return key;
     const prefix = key.substring(0, 3);
@@ -408,26 +394,22 @@ const Dashboard = () => {
     const masked = '*'.repeat(key.length - 7);
     return `${prefix}${masked}${suffix}`;
   };
-
   const getRiskColor = (score: number) => {
     if (score >= 70) return "text-red-500";
     if (score >= 40) return "text-yellow-500";
     return "text-green-500";
   };
-
   const getStatusBadge = (status: string) => {
     const variants = {
       approved: "bg-green-100 text-green-800",
       flagged: "bg-yellow-100 text-yellow-800",
       blocked: "bg-red-100 text-red-800",
-      review: "bg-blue-100 text-blue-800",
+      review: "bg-blue-100 text-blue-800"
     };
     return variants[status as keyof typeof variants] || "bg-gray-100 text-gray-800";
   };
-
   const DashboardContent: React.FC = () => {
-    return (
-      <div className="space-y-6">
+    return <div className="space-y-6">
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -491,8 +473,7 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {mockTransactions.slice(0, 5).map((tx) => (
-                      <div key={tx.id} className="flex items-center justify-between">
+                    {mockTransactions.slice(0, 5).map(tx => <div key={tx.id} className="flex items-center justify-between">
                         <div>
                           <p className="font-medium">{tx.id}</p>
                           <p className="text-sm text-muted-foreground">${tx.amount.toLocaleString()}</p>
@@ -503,8 +484,7 @@ const Dashboard = () => {
                             Risk: {tx.riskScore}
                           </p>
                         </div>
-                      </div>
-                    ))}
+                      </div>)}
                   </div>
                 </CardContent>
               </Card>
@@ -515,12 +495,8 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {mockAlerts.map((alert) => (
-                      <div key={alert.id} className="flex items-start space-x-3">
-                        <AlertCircle className={`h-5 w-5 mt-0.5 ${
-                          alert.severity === 'high' ? 'text-red-500' :
-                          alert.severity === 'medium' ? 'text-yellow-500' : 'text-blue-500'
-                        }`} />
+                    {mockAlerts.map(alert => <div key={alert.id} className="flex items-start space-x-3">
+                        <AlertCircle className={`h-5 w-5 mt-0.5 ${alert.severity === 'high' ? 'text-red-500' : alert.severity === 'medium' ? 'text-yellow-500' : 'text-blue-500'}`} />
                         <div className="flex-1">
                           <p className="font-medium">{alert.reason}</p>
                           <p className="text-sm text-muted-foreground">{alert.account}</p>
@@ -528,8 +504,7 @@ const Dashboard = () => {
                         <Badge variant={alert.severity === 'high' ? 'destructive' : 'secondary'}>
                           {alert.severity}
                         </Badge>
-                      </div>
-                    ))}
+                      </div>)}
                   </div>
                 </CardContent>
               </Card>
@@ -569,8 +544,7 @@ const Dashboard = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mockTransactions.map((tx) => (
-                      <TableRow key={tx.id}>
+                    {mockTransactions.map(tx => <TableRow key={tx.id}>
                         <TableCell className="font-medium">{tx.id}</TableCell>
                         <TableCell>${tx.amount.toLocaleString()}</TableCell>
                         <TableCell>{tx.country}</TableCell>
@@ -579,8 +553,7 @@ const Dashboard = () => {
                           <Badge className={getStatusBadge(tx.status)}>{tx.status}</Badge>
                         </TableCell>
                         <TableCell>{tx.timestamp}</TableCell>
-                      </TableRow>
-                    ))}
+                      </TableRow>)}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -594,8 +567,7 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {mockAlerts.map((alert) => (
-                    <div key={alert.id} className="border rounded-lg p-4">
+                  {mockAlerts.map(alert => <div key={alert.id} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center space-x-2">
                           <Badge variant={alert.severity === 'high' ? 'destructive' : 'secondary'}>
@@ -611,8 +583,7 @@ const Dashboard = () => {
                         <Button size="sm" variant="outline">Investigate</Button>
                         <Button size="sm" variant="outline">Dismiss</Button>
                       </div>
-                    </div>
-                  ))}
+                    </div>)}
                 </div>
               </CardContent>
             </Card>
@@ -626,14 +597,12 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {continentRiskData.map((region) => (
-                    <div key={region.continent} className="border rounded-lg p-4">
+                  {continentRiskData.map(region => <div key={region.continent} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="font-medium">{region.continent}</h3>
-                        <div
-                          className="w-4 h-4 rounded-full"
-                          style={{ backgroundColor: region.color }}
-                        />
+                        <div className="w-4 h-4 rounded-full" style={{
+                      backgroundColor: region.color
+                    }} />
                       </div>
                       <div className="space-y-2">
                         <div className="flex justify-between">
@@ -648,8 +617,7 @@ const Dashboard = () => {
                           <span className="font-medium">{region.transactions.toLocaleString()}</span>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    </div>)}
                 </div>
               </CardContent>
             </Card>
@@ -687,13 +655,10 @@ const Dashboard = () => {
             </div>
           </TabsContent>
         </Tabs>
-      </div>
-    );
+      </div>;
   };
-
   const ApiManagementContent: React.FC = () => {
-    return (
-      <div className="space-y-6">
+    return <div className="space-y-6">
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -709,13 +674,9 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {apiKeys.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
+              {apiKeys.length === 0 ? <div className="text-center py-8 text-muted-foreground">
                   No API keys found. Create your first API key to get started.
-                </div>
-              ) : (
-                apiKeys.map((apiKey) => (
-                  <div key={apiKey.id} className="border rounded-lg p-4">
+                </div> : apiKeys.map(apiKey => <div key={apiKey.id} className="border rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="font-medium">{apiKey.name}</h3>
                       <div className="flex items-center gap-2">
@@ -733,10 +694,7 @@ const Dashboard = () => {
                               <RotateCcw className="h-4 w-4 mr-2" />
                               Rotate API Key
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteClick(apiKey)}
-                              className="text-red-600 hover:text-red-700"
-                            >
+                            <DropdownMenuItem onClick={() => handleDeleteClick(apiKey)} className="text-red-600 hover:text-red-700">
                               <Trash2 className="h-4 w-4 mr-2" />
                               Delete API Key
                             </DropdownMenuItem>
@@ -763,28 +721,18 @@ const Dashboard = () => {
                     </div>
                     <div className="flex gap-2 items-center">
                       <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={apiKey.is_active}
-                          onChange={() => toggleKeyStatus(apiKey.id, apiKey.is_active)}
-                          className="rounded"
-                        />
+                        <input type="checkbox" checked={apiKey.is_active} onChange={() => toggleKeyStatus(apiKey.id, apiKey.is_active)} className="rounded" />
                         Enabled
                       </label>
                     </div>
-                  </div>
-                ))
-              )}
+                  </div>)}
             </div>
           </CardContent>
         </Card>
-      </div>
-    );
+      </div>;
   };
-
   const SettingsContent: React.FC = () => {
-    return (
-      <div className="space-y-6">
+    return <div className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>Account Preferences</CardTitle>
@@ -835,16 +783,13 @@ const Dashboard = () => {
       IP Restrictions
     </Button>
   </div>
-</CardContent>
+        </CardContent>
 
         </Card>
-      </div>
-    );
+      </div>;
   };
-
   const BillingContent: React.FC = () => {
-    return (
-      <div className="space-y-6">
+    return <div className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>Current Plan</CardTitle>
@@ -877,12 +822,19 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {[
-                { date: "2024-01-01", amount: "$299.00", status: "Paid" },
-                { date: "2023-12-01", amount: "$299.00", status: "Paid" },
-                { date: "2023-11-01", amount: "$299.00", status: "Paid" },
-              ].map((invoice, i) => (
-                <div key={i} className="flex items-center justify-between border-b pb-2">
+              {[{
+              date: "2024-01-01",
+              amount: "$299.00",
+              status: "Paid"
+            }, {
+              date: "2023-12-01",
+              amount: "$299.00",
+              status: "Paid"
+            }, {
+              date: "2023-11-01",
+              amount: "$299.00",
+              status: "Paid"
+            }].map((invoice, i) => <div key={i} className="flex items-center justify-between border-b pb-2">
                   <div>
                     <p className="font-medium">{invoice.date}</p>
                     <p className="text-sm text-muted-foreground">{invoice.amount}</p>
@@ -893,23 +845,17 @@ const Dashboard = () => {
                       <Download className="h-4 w-4" />
                     </Button>
                   </div>
-                </div>
-              ))}
+                </div>)}
             </div>
           </CardContent>
         </Card>
-      </div>
-    );
+      </div>;
   };
-
   const ProfileContent: React.FC = () => {
-    return (
-      <div className="space-y-6">
+    return <div className="space-y-6">
         <ProfileSettings />
-      </div>
-    );
+      </div>;
   };
-
   const renderContent = () => {
     switch (activeSection) {
       case "dashboard":
@@ -926,21 +872,16 @@ const Dashboard = () => {
         return <DashboardContent />;
     }
   };
-
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
+    return <div className="min-h-screen bg-gray-50">
         <div className="animate-pulse space-y-4 p-8">
           <div className="h-8 bg-muted rounded w-1/4"></div>
           <div className="h-32 bg-muted rounded"></div>
           <div className="h-32 bg-muted rounded"></div>
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className={`flex min-h-screen w-full ${isDark ? 'dark' : ''}`}>
+  return <div className={`flex min-h-screen w-full ${isDark ? 'dark' : ''}`}>
       <div className="flex w-full bg-background text-foreground">
         <Sidebar activeSection={activeSection} setActiveSection={setActiveSection} />
         
@@ -968,11 +909,7 @@ const Dashboard = () => {
                 <Bell className="h-4 w-4" />
                 <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full"></span>
               </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setIsDark(!isDark)}
-              >
+              <Button variant="outline" size="icon" onClick={() => setIsDark(!isDark)}>
                 {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
             </div>
@@ -995,29 +932,17 @@ const Dashboard = () => {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="keyName">Key Name</Label>
-              <Input
-                id="keyName"
-                placeholder="e.g., Production API Key"
-                value={newKeyName}
-                onChange={(e) => setNewKeyName(e.target.value)}
-              />
+              <Input id="keyName" placeholder="e.g., Production API Key" value={newKeyName} onChange={e => setNewKeyName(e.target.value)} />
             </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowCreateDialog(false);
-                setNewKeyName('');
-              }}
-            >
+            <Button variant="outline" onClick={() => {
+            setShowCreateDialog(false);
+            setNewKeyName('');
+          }}>
               Cancel
             </Button>
-            <Button
-              onClick={createApiKey}
-              disabled={creating}
-              className="bg-emerald-600 hover:bg-emerald-700"
-            >
+            <Button onClick={createApiKey} disabled={creating} className="bg-emerald-600 hover:bg-emerald-700">
               {creating ? 'Creating...' : 'Create API Key'}
             </Button>
           </DialogFooter>
@@ -1039,17 +964,12 @@ const Dashboard = () => {
             <AlertDialogCancel onClick={() => setKeyToDelete(null)}>
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={deleteApiKey}
-              className="bg-red-600 text-white hover:bg-red-700"
-            >
+            <AlertDialogAction onClick={deleteApiKey} className="bg-red-600 text-white hover:bg-red-700">
               Delete API Key
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
+    </div>;
 };
-
 export default Dashboard;
