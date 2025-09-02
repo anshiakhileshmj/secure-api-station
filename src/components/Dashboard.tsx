@@ -822,22 +822,21 @@ const Dashboard = () => {
             <CardTitle>Security Settings</CardTitle>
           </CardHeader>
           <CardContent>
-  <div className="flex flex-col gap-4">
-    <Button variant="outline" className="w-full">
+  <div className="flex gap-4">
+    <Button variant="outline">
       <Lock className="h-4 w-4 mr-2" />
       Change Password
     </Button>
-    <Button variant="outline" className="w-full">
+    <Button variant="outline">
       <Smartphone className="h-4 w-4 mr-2" />
       Manage 2FA
     </Button>
-    <Button variant="outline" className="w-full">
+    <Button variant="outline">
       <Globe className="h-4 w-4 mr-2" />
       IP Restrictions
     </Button>
   </div>
 </CardContent>
-
 
         </Card>
       </div>
