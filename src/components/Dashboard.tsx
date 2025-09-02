@@ -964,7 +964,7 @@ const Dashboard = () => {
                 {activeSection === "profile" && "Update your personal information"}
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <Button variant="outline" size="icon" className="relative">
                 <Bell className="h-4 w-4" />
                 <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full"></span>
@@ -975,9 +975,6 @@ const Dashboard = () => {
                 onClick={() => setIsDark(!isDark)}
               >
                 {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </Button>
-              <Button variant="outline" size="icon">
-                <User className="h-4 w-4" />
               </Button>
             </div>
           </div>
