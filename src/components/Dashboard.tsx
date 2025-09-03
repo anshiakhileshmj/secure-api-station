@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Home, Shield, Settings, CreditCard, User, ChevronDown, ChevronsRight, Moon, Sun, Bell, Search, AlertTriangle, Activity, Globe, Eye, EyeOff, Copy, RotateCcw, Trash2, Plus, Download, FileText, Key, Lock, Smartphone, BarChart3, LineChart, AlertCircle, CheckCircle, Info, MoreVertical, TrendingUp, Users, DollarSign, Calendar, Clock, MapPin, Filter, ExternalLink, Zap } from 'lucide-react';
+import { Home, Shield, Settings, CreditCard, User, ChevronDown, ChevronsRight, Moon, Sun, Bell, Search, AlertTriangle, Activity, Globe, Eye, EyeOff, Copy, RotateCcw, Trash2, Plus, Download, FileText, Key, Lock, Smartphone, BarChart3, LineChart, AlertCircle, CheckCircle, Info, MoreVertical, TrendingUp, Users, DollarSign, Calendar, Clock, MapPin, Filter, ExternalLink, Zap, Play, Pause, RefreshCw, AlertOctagon } from 'lucide-react';
 import { toast } from 'sonner';
 import ApiAnalytics from './ApiAnalytics';
 import NotificationDropdown from './NotificationDropdown';
@@ -21,6 +21,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart as RechartsBarChart, Bar, PieChart, Pie, Cell, Area, AreaChart } from 'recharts';
+import { format, subDays, startOfDay } from 'date-fns';
+import ReactSelect from 'react-select';
+import { saveAs } from 'file-saver';
+import jsPDF from 'jspdf';
 
 interface ApiKey {
   id: string;
@@ -135,6 +140,36 @@ const continentRiskData = [{
   color: "#6b7280"
 }];
 
+// Enhanced mock data for comprehensive dashboard
+const mockRiskTrendData = [
+  { date: '2024-01-01', risk: 45, volume: 1200 },
+  { date: '2024-01-02', risk: 52, volume: 1350 },
+  { date: '2024-01-03', risk: 38, volume: 1100 },
+  { date: '2024-01-04', risk: 67, volume: 1800 },
+  { date: '2024-01-05', risk: 55, volume: 1600 },
+  { date: '2024-01-06', risk: 48, volume: 1400 },
+  { date: '2024-01-07', risk: 72, volume: 1900 }
+];
+
+const mockTransactionTypes = [
+  { type: 'Wire Transfer', count: 1250, risk: 65, color: '#ef4444' },
+  { type: 'ACH Transfer', count: 980, risk: 35, color: '#22c55e' },
+  { type: 'Credit Card', count: 750, risk: 45, color: '#eab308' },
+  { type: 'Digital Wallet', count: 420, risk: 58, color: '#f97316' }
+];
+
+const mockSanctionsData = [
+  { id: 'SANC001', name: 'John Doe', type: 'PEP', country: 'Russia', status: 'active', added: '2024-01-10' },
+  { id: 'SANC002', name: 'ABC Corp', type: 'Entity', country: 'Iran', status: 'active', added: '2024-01-08' },
+  { id: 'SANC003', name: 'Jane Smith', type: 'SDN', country: 'North Korea', status: 'monitoring', added: '2024-01-05' }
+];
+
+const mockCases = [
+  { id: 'CASE001', title: 'Suspicious Wire Transfer Pattern', priority: 'high', status: 'investigating', assigned: 'Alice Johnson', created: '2024-01-15', transactions: 5 },
+  { id: 'CASE002', title: 'PEP Match Verification', priority: 'medium', status: 'pending_review', assigned: 'Bob Wilson', created: '2024-01-14', transactions: 2 },
+  { id: 'CASE003', title: 'Geographic Anomaly Investigation', priority: 'low', status: 'resolved', assigned: 'Carol Davis', created: '2024-01-12', transactions: 8 }
+];
+
 interface SidebarProps {
   activeSection: string;
   setActiveSection: (section: string) => void;
@@ -229,6 +264,16 @@ const Dashboard = () => {
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [keyToDelete, setKeyToDelete] = useState<ApiKey | null>(null);
+  
+  // Enhanced filtering and search state
+  const [transactionSearch, setTransactionSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [countryFilter, setCountryFilter] = useState('all');
+  const [riskFilter, setRiskFilter] = useState('all');
+  const [dateRange, setDateRange] = useState({ from: '', to: '' });
+  const [isRealTimeEnabled, setIsRealTimeEnabled] = useState(true);
+  const [sortBy, setSortBy] = useState('timestamp');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     if (isDark) {
@@ -409,6 +454,64 @@ const Dashboard = () => {
     const masked = '*'.repeat(key.length - 7);
     return `${prefix}${masked}${suffix}`;
   };
+
+  // Enhanced filtering and export functions
+  const filteredTransactions = useMemo(() => {
+    return mockTransactions.filter(tx => {
+      const matchesSearch = transactionSearch === '' || 
+        tx.id.toLowerCase().includes(transactionSearch.toLowerCase()) ||
+        tx.country.toLowerCase().includes(transactionSearch.toLowerCase());
+      
+      const matchesStatus = statusFilter === 'all' || tx.status === statusFilter;
+      const matchesCountry = countryFilter === 'all' || tx.country === countryFilter;
+      const matchesRisk = riskFilter === 'all' || 
+        (riskFilter === 'low' && tx.riskScore < 40) ||
+        (riskFilter === 'medium' && tx.riskScore >= 40 && tx.riskScore < 70) ||
+        (riskFilter === 'high' && tx.riskScore >= 70);
+      
+      return matchesSearch && matchesStatus && matchesCountry && matchesRisk;
+    }).sort((a, b) => {
+      const aValue = a[sortBy as keyof typeof a];
+      const bValue = b[sortBy as keyof typeof b];
+      const modifier = sortOrder === 'asc' ? 1 : -1;
+      return aValue > bValue ? modifier : -modifier;
+    });
+  }, [transactionSearch, statusFilter, countryFilter, riskFilter, sortBy, sortOrder]);
+
+  const exportToCSV = () => {
+    const headers = ['Transaction ID', 'Amount', 'Country', 'Risk Score', 'Status', 'Timestamp'];
+    const csvContent = [
+      headers.join(','),
+      ...filteredTransactions.map(tx => 
+        [tx.id, tx.amount, tx.country, tx.riskScore, tx.status, tx.timestamp].join(',')
+      )
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    saveAs(blob, `transactions-${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    toast.success('Transactions exported to CSV');
+  };
+
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(20);
+    doc.text('AML Transaction Report', 20, 20);
+    doc.setFontSize(12);
+    doc.text(`Generated on: ${format(new Date(), 'PPP')}`, 20, 35);
+    
+    let yPosition = 55;
+    filteredTransactions.forEach((tx, index) => {
+      if (yPosition > 270) {
+        doc.addPage();
+        yPosition = 20;
+      }
+      doc.text(`${tx.id} | $${tx.amount.toLocaleString()} | ${tx.country} | Risk: ${tx.riskScore} | ${tx.status}`, 20, yPosition);
+      yPosition += 10;
+    });
+    
+    doc.save(`aml-report-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    toast.success('Report exported to PDF');
+  };
   const getRiskColor = (score: number) => {
     if (score >= 70) return "text-red-500";
     if (score >= 40) return "text-yellow-500";
@@ -427,10 +530,11 @@ const Dashboard = () => {
   const DashboardContent: React.FC = () => {
     return <div className="space-y-6">
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="transactions">Transactions</TabsTrigger>
             <TabsTrigger value="alerts">Alerts</TabsTrigger>
+            <TabsTrigger value="sanctions">Sanctions</TabsTrigger>
             <TabsTrigger value="heatmap">Risk Heatmap</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
@@ -576,77 +680,675 @@ const Dashboard = () => {
           </TabsContent>
 
           <TabsContent value="transactions" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Transaction Monitoring</CardTitle>
-                <div className="flex gap-4">
-                  <Input placeholder="Search transactions..." className="max-w-sm" />
-                  <Select>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Filter by status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="approved">Approved</SelectItem>
-                      <SelectItem value="flagged">Flagged</SelectItem>
-                      <SelectItem value="blocked">Blocked</SelectItem>
-                    </SelectContent>
-                  </Select>
+            {/* Real-time Transaction Feed Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <h2 className="text-2xl font-bold text-gray-900">Transaction Monitoring</h2>
+                <div className="flex items-center gap-2">
+                  <div className={`h-2 w-2 rounded-full ${isRealTimeEnabled ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+                  <span className="text-sm text-gray-600">{isRealTimeEnabled ? 'Live Feed' : 'Paused'}</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setIsRealTimeEnabled(!isRealTimeEnabled)}
+                    className="ml-2"
+                  >
+                    {isRealTimeEnabled ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  </Button>
                 </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button onClick={exportToCSV} variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export CSV
+                </Button>
+                <Button onClick={exportToPDF} variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export PDF
+                </Button>
+              </div>
+            </div>
+
+            {/* Advanced Filtering Panel */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
+                <CardTitle className="flex items-center gap-2 text-gray-800">
+                  <Filter className="h-5 w-5 text-blue-500" />
+                  Advanced Filters & Search
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Transaction ID</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Country</TableHead>
-                      <TableHead>Risk Score</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Timestamp</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mockTransactions.map(tx => <TableRow key={tx.id}>
-                        <TableCell className="font-medium">{tx.id}</TableCell>
-                        <TableCell>${tx.amount.toLocaleString()}</TableCell>
-                        <TableCell>{tx.country}</TableCell>
-                        <TableCell className={getRiskColor(tx.riskScore)}>{tx.riskScore}</TableCell>
-                        <TableCell>
-                          <Badge className={getStatusBadge(tx.status)}>{tx.status}</Badge>
-                        </TableCell>
-                        <TableCell>{tx.timestamp}</TableCell>
-                      </TableRow>)}
-                  </TableBody>
-                </Table>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Search</label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        placeholder="Transaction ID, Country..."
+                        value={transactionSearch}
+                        onChange={(e) => setTransactionSearch(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Status</label>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="flagged">Flagged</SelectItem>
+                        <SelectItem value="blocked">Blocked</SelectItem>
+                        <SelectItem value="review">Under Review</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Risk Level</label>
+                    <Select value={riskFilter} onValueChange={setRiskFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Risk Levels" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Risk Levels</SelectItem>
+                        <SelectItem value="low">Low (0-39)</SelectItem>
+                        <SelectItem value="medium">Medium (40-69)</SelectItem>
+                        <SelectItem value="high">High (70+)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Country</label>
+                    <Select value={countryFilter} onValueChange={setCountryFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Countries" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Countries</SelectItem>
+                        <SelectItem value="US">United States</SelectItem>
+                        <SelectItem value="UK">United Kingdom</SelectItem>
+                        <SelectItem value="DE">Germany</SelectItem>
+                        <SelectItem value="RU">Russia</SelectItem>
+                        <SelectItem value="CN">China</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm text-gray-600">
+                      Showing {filteredTransactions.length} of {mockTransactions.length} transactions
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setTransactionSearch('');
+                        setStatusFilter('all');
+                        setCountryFilter('all');
+                        setRiskFilter('all');
+                      }}
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Clear Filters
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">Sort by:</span>
+                    <Select value={sortBy} onValueChange={setSortBy}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="timestamp">Time</SelectItem>
+                        <SelectItem value="amount">Amount</SelectItem>
+                        <SelectItem value="riskScore">Risk Score</SelectItem>
+                        <SelectItem value="country">Country</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                    >
+                      {sortOrder === 'asc' ? '↑' : '↓'}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Enhanced Transaction Table */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-t-lg">
+                <CardTitle className="flex items-center gap-2 text-gray-800">
+                  <Activity className="h-5 w-5 text-blue-500" />
+                  Real-time Transaction Feed
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50/50">
+                        <TableHead className="font-semibold text-gray-700">Transaction ID</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Amount</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Country</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Risk Score</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Status</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Timestamp</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredTransactions.map((tx, index) => (
+                        <TableRow 
+                          key={tx.id} 
+                          className={`hover:bg-gray-50/50 transition-colors ${
+                            isRealTimeEnabled && index === 0 ? 'bg-blue-50/30 animate-pulse' : ''
+                          }`}
+                        >
+                          <TableCell className="font-mono font-medium text-gray-900">{tx.id}</TableCell>
+                          <TableCell className="font-semibold text-gray-900">
+                            ${tx.amount.toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-4 bg-gray-200 rounded-sm flex items-center justify-center">
+                                <span className="text-xs font-medium text-gray-600">{tx.country}</span>
+                              </div>
+                              {tx.country}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className={`h-2 w-16 rounded-full overflow-hidden bg-gray-200`}>
+                                <div 
+                                  className={`h-full transition-all duration-300 ${
+                                    tx.riskScore >= 70 ? 'bg-red-500' : 
+                                    tx.riskScore >= 40 ? 'bg-yellow-500' : 'bg-green-500'
+                                  }`}
+                                  style={{ width: `${tx.riskScore}%` }}
+                                />
+                              </div>
+                              <span className={`font-semibold ${getRiskColor(tx.riskScore)}`}>
+                                {tx.riskScore}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={`${getStatusBadge(tx.status)} font-medium`}>
+                              {tx.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-gray-600">{tx.timestamp}</TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <AlertTriangle className="h-4 w-4 mr-2" />
+                                  Flag Transaction
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Shield className="h-4 w-4 mr-2" />
+                                  Create Case
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="alerts" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Alert Management</CardTitle>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Alert & Case Management</h2>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export Cases
+                </Button>
+                <Button size="sm" className="bg-red-500 hover:bg-red-600 text-white">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Alert
+                </Button>
+              </div>
+            </div>
+
+            {/* Alert Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <Card className="border-0 shadow-lg bg-gradient-to-br from-red-50 to-rose-100">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-red-700">Critical Alerts</p>
+                      <p className="text-2xl font-bold text-red-600">12</p>
+                    </div>
+                    <AlertTriangle className="h-8 w-8 text-red-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="border-0 shadow-lg bg-gradient-to-br from-yellow-50 to-amber-100">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-yellow-700">Open Cases</p>
+                      <p className="text-2xl font-bold text-yellow-600">8</p>
+                    </div>
+                    <FileText className="h-8 w-8 text-yellow-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-indigo-100">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-blue-700">Investigating</p>
+                      <p className="text-2xl font-bold text-blue-600">15</p>
+                    </div>
+                    <Search className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="border-0 shadow-lg bg-gradient-to-br from-green-50 to-emerald-100">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-green-700">Resolved Today</p>
+                      <p className="text-2xl font-bold text-green-600">23</p>
+                    </div>
+                    <CheckCircle className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Active Alerts */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50 rounded-t-lg">
+                <CardTitle className="flex items-center gap-2 text-gray-800">
+                  <Bell className="h-5 w-5 text-red-500" />
+                  Active Alerts
+                </CardTitle>
+                <CardDescription>Critical alerts requiring immediate attention</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6">
                 <div className="space-y-4">
-                  {mockAlerts.map(alert => <div key={alert.id} className="border rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-2">
-                          <Badge variant={alert.severity === 'high' ? 'destructive' : 'secondary'}>
-                            {alert.severity}
-                          </Badge>
-                          <span className="font-medium">{alert.id}</span>
+                  {mockAlerts.map(alert => (
+                    <div key={alert.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-200">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-4 flex-1">
+                          <div className={`p-2 rounded-lg ${
+                            alert.severity === 'high' ? 'bg-red-100' : 
+                            alert.severity === 'medium' ? 'bg-yellow-100' : 'bg-blue-100'
+                          }`}>
+                            <AlertCircle className={`h-5 w-5 ${
+                              alert.severity === 'high' ? 'text-red-500' : 
+                              alert.severity === 'medium' ? 'text-yellow-500' : 'text-blue-500'
+                            }`} />
+                          </div>
+                          
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge variant={alert.severity === 'high' ? 'destructive' : 'secondary'} className="font-medium">
+                                {alert.severity.toUpperCase()}
+                              </Badge>
+                              <span className="font-mono text-sm text-gray-600">{alert.id}</span>
+                              <span className="text-sm text-gray-500">•</span>
+                              <span className="text-sm text-gray-500">{alert.timestamp}</span>
+                            </div>
+                            
+                            <h3 className="font-semibold text-gray-900 mb-1">{alert.reason}</h3>
+                            <p className="text-sm text-gray-600 mb-3">
+                              Account: <span className="font-medium">{alert.account}</span>
+                            </p>
+                            
+                            <div className="flex items-center gap-2">
+                              <Button size="sm" variant="outline" className="hover:bg-blue-50">
+                                <Eye className="h-4 w-4 mr-1" />
+                                Investigate
+                              </Button>
+                              <Button size="sm" variant="outline" className="hover:bg-green-50">
+                                <Shield className="h-4 w-4 mr-1" />
+                                Create Case
+                              </Button>
+                              <Button size="sm" variant="outline" className="hover:bg-gray-50">
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Dismiss
+                              </Button>
+                            </div>
+                          </div>
                         </div>
-                        <span className="text-sm text-muted-foreground">{alert.timestamp}</span>
+                        
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>
+                              <Users className="h-4 w-4 mr-2" />
+                              Assign Analyst
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Clock className="h-4 w-4 mr-2" />
+                              Set Priority
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <Download className="h-4 w-4 mr-2" />
+                              Export Details
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
-                      <p className="text-sm">{alert.reason}</p>
-                      <p className="text-sm text-muted-foreground">Account: {alert.account}</p>
-                      <div className="flex gap-2 mt-3">
-                        <Button size="sm" variant="outline">Investigate</Button>
-                        <Button size="sm" variant="outline">Dismiss</Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Case Management */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
+                <CardTitle className="flex items-center gap-2 text-gray-800">
+                  <FileText className="h-5 w-5 text-blue-500" />
+                  Active Cases
+                </CardTitle>
+                <CardDescription>Ongoing compliance investigations</CardDescription>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  {mockCases.map(caseItem => (
+                    <div key={caseItem.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-200">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className="font-mono text-sm font-medium text-blue-600">{caseItem.id}</span>
+                            <Badge variant={
+                              caseItem.priority === 'high' ? 'destructive' : 
+                              caseItem.priority === 'medium' ? 'default' : 'secondary'
+                            }>
+                              {caseItem.priority} priority
+                            </Badge>
+                            <Badge variant="outline" className={
+                              caseItem.status === 'resolved' ? 'bg-green-50 text-green-700' :
+                              caseItem.status === 'investigating' ? 'bg-blue-50 text-blue-700' :
+                              'bg-yellow-50 text-yellow-700'
+                            }>
+                              {caseItem.status.replace('_', ' ')}
+                            </Badge>
+                          </div>
+                          
+                          <h3 className="font-semibold text-gray-900 mb-2">{caseItem.title}</h3>
+                          
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
+                            <div className="flex items-center gap-1">
+                              <Users className="h-4 w-4" />
+                              <span>{caseItem.assigned}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-4 w-4" />
+                              <span>{caseItem.created}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Activity className="h-4 w-4" />
+                              <span>{caseItem.transactions} transactions</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-4 w-4" />
+                              <span>Last updated: 2h ago</span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            <Button size="sm" variant="outline">
+                              <Eye className="h-4 w-4 mr-1" />
+                              View Details
+                            </Button>
+                            <Button size="sm" variant="outline">
+                              <Download className="h-4 w-4 mr-1" />
+                              Generate Report
+                            </Button>
+                            {caseItem.status !== 'resolved' && (
+                              <Button size="sm" variant="outline">
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Mark Resolved
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="ml-4">
+                          <div className={`w-3 h-3 rounded-full ${
+                            caseItem.priority === 'high' ? 'bg-red-500' :
+                            caseItem.priority === 'medium' ? 'bg-yellow-500' :
+                            'bg-green-500'
+                          }`} />
+                        </div>
                       </div>
-                    </div>)}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="sanctions" className="space-y-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Sanctions & PEP Monitoring</h2>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export List
+                </Button>
+                <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add to Watchlist
+                </Button>
+              </div>
+            </div>
+
+            {/* Sanctions Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-50 to-red-100">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-orange-700">Active Sanctions</p>
+                      <p className="text-2xl font-bold text-orange-600">{mockSanctionsData.length}</p>
+                    </div>
+                    <Shield className="h-8 w-8 text-orange-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-50 to-violet-100">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-purple-700">PEP Matches</p>
+                      <p className="text-2xl font-bold text-purple-600">4</p>
+                    </div>
+                    <Users className="h-8 w-8 text-purple-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-indigo-100">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-blue-700">Screening Today</p>
+                      <p className="text-2xl font-bold text-blue-600">156</p>
+                    </div>
+                    <Search className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Sanctions List */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="bg-gradient-to-r from-orange-50 to-red-50 rounded-t-lg">
+                <CardTitle className="flex items-center gap-2 text-gray-800">
+                  <Shield className="h-5 w-5 text-orange-500" />
+                  Sanctions Watchlist
+                </CardTitle>
+                <CardDescription>Active sanctions and PEP monitoring</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50/50">
+                        <TableHead className="font-semibold text-gray-700">ID</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Name/Entity</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Type</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Country</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Status</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Date Added</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {mockSanctionsData.map((item, index) => (
+                        <TableRow key={item.id} className="hover:bg-gray-50/50 transition-colors">
+                          <TableCell className="font-mono font-medium text-gray-900">{item.id}</TableCell>
+                          <TableCell className="font-semibold text-gray-900">{item.name}</TableCell>
+                          <TableCell>
+                            <Badge variant={item.type === 'PEP' ? 'default' : 'secondary'} className={
+                              item.type === 'PEP' ? 'bg-purple-100 text-purple-700' :
+                              item.type === 'SDN' ? 'bg-red-100 text-red-700' :
+                              'bg-orange-100 text-orange-700'
+                            }>
+                              {item.type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-4 bg-gray-200 rounded-sm flex items-center justify-center">
+                                <span className="text-xs font-medium text-gray-600">{item.country.slice(0, 2)}</span>
+                              </div>
+                              {item.country}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className={`h-2 w-2 rounded-full ${
+                                item.status === 'active' ? 'bg-red-500' : 'bg-yellow-500'
+                              }`} />
+                              <span className={`text-sm font-medium ${
+                                item.status === 'active' ? 'text-red-700' : 'text-yellow-700'
+                              }`}>
+                                {item.status}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-gray-600">{item.added}</TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Bell className="h-4 w-4 mr-2" />
+                                  Create Alert
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Download className="h-4 w-4 mr-2" />
+                                  Export Profile
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-red-600">
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Remove
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Screening Activity */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
+                <CardTitle className="flex items-center gap-2 text-gray-800">
+                  <Activity className="h-5 w-5 text-blue-500" />
+                  Recent Screening Activity
+                </CardTitle>
+                <CardDescription>Latest sanctions and PEP screening results</CardDescription>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                      <div>
+                        <p className="font-medium text-green-900">Batch screening completed</p>
+                        <p className="text-sm text-green-700">156 records screened, 0 matches found</p>
+                      </div>
+                    </div>
+                    <span className="text-sm text-green-600">2 minutes ago</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <div className="flex items-center gap-3">
+                      <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                      <div>
+                        <p className="font-medium text-yellow-900">Potential PEP match detected</p>
+                        <p className="text-sm text-yellow-700">Customer: John Doe - Requires manual review</p>
+                      </div>
+                    </div>
+                    <span className="text-sm text-yellow-600">15 minutes ago</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200">
+                    <div className="flex items-center gap-3">
+                      <AlertCircle className="h-5 w-5 text-red-500" />
+                      <div>
+                        <p className="font-medium text-red-900">Sanctions match confirmed</p>
+                        <p className="text-sm text-red-700">Entity: ABC Corp - Transaction blocked automatically</p>
+                      </div>
+                    </div>
+                    <span className="text-sm text-red-600">1 hour ago</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -687,35 +1389,236 @@ const Dashboard = () => {
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Analytics & Trends</h2>
+              <div className="flex items-center gap-2">
+                <Select defaultValue="7days">
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="24hours">24 Hours</SelectItem>
+                    <SelectItem value="7days">7 Days</SelectItem>
+                    <SelectItem value="30days">30 Days</SelectItem>
+                    <SelectItem value="90days">90 Days</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Risk Trends</CardTitle>
+              <Card className="border-0 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
+                  <CardTitle className="flex items-center gap-2 text-gray-800">
+                    <TrendingUp className="h-5 w-5 text-blue-500" />
+                    Risk Score Trends
+                  </CardTitle>
+                  <CardDescription>7-day risk assessment trends</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="h-64 flex items-center justify-center border-2 border-dashed border-muted-foreground/25 rounded-lg">
-                    <div className="text-center">
-                      <LineChart className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                      <p className="text-muted-foreground">Risk trend chart would appear here</p>
-                    </div>
-                  </div>
+                <CardContent className="p-6">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <RechartsLineChart data={mockRiskTrendData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis 
+                        dataKey="date" 
+                        stroke="#666"
+                        tick={{ fontSize: 12 }}
+                        tickFormatter={(value) => format(new Date(value), 'MMM dd')}
+                      />
+                      <YAxis stroke="#666" tick={{ fontSize: 12 }} />
+                      <Tooltip 
+                        labelFormatter={(value) => format(new Date(value), 'PPP')}
+                        formatter={(value: any, name: string) => [
+                          name === 'risk' ? `${value}% Risk` : `${value} Transactions`,
+                          name === 'risk' ? 'Average Risk Score' : 'Transaction Volume'
+                        ]}
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                        }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="risk" 
+                        stroke="#ef4444" 
+                        strokeWidth={3}
+                        dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
+                        activeDot={{ r: 6, fill: '#dc2626' }}
+                      />
+                    </RechartsLineChart>
+                  </ResponsiveContainer>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Transaction Volume</CardTitle>
+              <Card className="border-0 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-t-lg">
+                  <CardTitle className="flex items-center gap-2 text-gray-800">
+                    <BarChart3 className="h-5 w-5 text-emerald-500" />
+                    Transaction Volume
+                  </CardTitle>
+                  <CardDescription>Daily transaction processing volume</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="h-64 flex items-center justify-center border-2 border-dashed border-muted-foreground/25 rounded-lg">
-                    <div className="text-center">
-                      <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                      <p className="text-muted-foreground">Volume chart would appear here</p>
-                    </div>
-                  </div>
+                <CardContent className="p-6">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <RechartsBarChart data={mockRiskTrendData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis 
+                        dataKey="date" 
+                        stroke="#666"
+                        tick={{ fontSize: 12 }}
+                        tickFormatter={(value) => format(new Date(value), 'MMM dd')}
+                      />
+                      <YAxis stroke="#666" tick={{ fontSize: 12 }} />
+                      <Tooltip 
+                        labelFormatter={(value) => format(new Date(value), 'PPP')}
+                        formatter={(value: any) => [`${value} transactions`, 'Volume']}
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                        }}
+                      />
+                      <Bar 
+                        dataKey="volume" 
+                        fill="#10b981"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </RechartsBarChart>
+                  </ResponsiveContainer>
                 </CardContent>
               </Card>
             </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="border-0 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-t-lg">
+                  <CardTitle className="flex items-center gap-2 text-gray-800">
+                    <Activity className="h-5 w-5 text-orange-500" />
+                    Transaction Types Distribution
+                  </CardTitle>
+                  <CardDescription>Breakdown by transaction method</CardDescription>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={mockTransactionTypes}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ type, percent }) => `${type} ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="count"
+                      >
+                        {mockTransactionTypes.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        formatter={(value: any, name: string, props: any) => [
+                          `${value} transactions`,
+                          props.payload.type
+                        ]}
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-purple-50 to-violet-50 rounded-t-lg">
+                  <CardTitle className="flex items-center gap-2 text-gray-800">
+                    <AlertOctagon className="h-5 w-5 text-purple-500" />
+                    Risk vs Volume Correlation
+                  </CardTitle>
+                  <CardDescription>Risk score compared to transaction volume</CardDescription>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart data={mockRiskTrendData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis 
+                        dataKey="date" 
+                        stroke="#666"
+                        tick={{ fontSize: 12 }}
+                        tickFormatter={(value) => format(new Date(value), 'MMM dd')}
+                      />
+                      <YAxis stroke="#666" tick={{ fontSize: 12 }} />
+                      <Tooltip 
+                        labelFormatter={(value) => format(new Date(value), 'PPP')}
+                        formatter={(value: any, name: string) => [
+                          name === 'risk' ? `${value}% Risk` : `${value} Transactions`,
+                          name === 'risk' ? 'Risk Score' : 'Volume'
+                        ]}
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="volume"
+                        stackId="1"
+                        stroke="#8b5cf6"
+                        fill="#8b5cf6"
+                        fillOpacity={0.3}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="risk"
+                        stackId="2"
+                        stroke="#ef4444"
+                        fill="#ef4444"
+                        fillOpacity={0.3}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Performance Metrics */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader className="bg-gradient-to-r from-slate-50 to-gray-50 rounded-t-lg">
+                <CardTitle className="flex items-center gap-2 text-gray-800">
+                  <Zap className="h-5 w-5 text-yellow-500" />
+                  Performance Metrics
+                </CardTitle>
+                <CardDescription>Key performance indicators for compliance monitoring</CardDescription>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  <div className="text-center p-4 bg-blue-50 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600">2.3s</div>
+                    <div className="text-sm text-gray-600">Avg. Processing Time</div>
+                  </div>
+                  <div className="text-center p-4 bg-green-50 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">99.2%</div>
+                    <div className="text-sm text-gray-600">Detection Accuracy</div>
+                  </div>
+                  <div className="text-center p-4 bg-purple-50 rounded-lg">
+                    <div className="text-2xl font-bold text-purple-600">156</div>
+                    <div className="text-sm text-gray-600">False Positives Today</div>
+                  </div>
+                  <div className="text-center p-4 bg-orange-50 rounded-lg">
+                    <div className="text-2xl font-bold text-orange-600">98.8%</div>
+                    <div className="text-sm text-gray-600">System Uptime</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>;
