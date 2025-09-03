@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Home, Shield, Settings, CreditCard, User, ChevronDown, ChevronsRight, Moon, Sun, Bell, Search, AlertTriangle, Activity, Globe, Eye, EyeOff, Copy, RotateCcw, Trash2, Plus, Download, FileText, Key, Lock, Smartphone, BarChart3, LineChart, AlertCircle, CheckCircle, Info, MoreVertical } from 'lucide-react';
+import { Home, Shield, Settings, CreditCard, User, ChevronDown, ChevronsRight, Moon, Sun, Bell, Search, AlertTriangle, Activity, Globe, Eye, EyeOff, Copy, RotateCcw, Trash2, Plus, Download, FileText, Key, Lock, Smartphone, BarChart3, LineChart, AlertCircle, CheckCircle, Info, MoreVertical, TrendingUp, Users, DollarSign, Calendar, Clock, MapPin, Filter, ExternalLink, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import ApiAnalytics from './ApiAnalytics';
 import NotificationDropdown from './NotificationDropdown';
@@ -437,66 +437,98 @@ const Dashboard = () => {
 
           <TabsContent value="overview" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card>
+              <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-indigo-100 hover:shadow-xl transition-all duration-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
-                  <Activity className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium text-gray-700">Total Transactions</CardTitle>
+                  <div className="h-10 w-10 bg-blue-500 rounded-lg flex items-center justify-center">
+                    <TrendingUp className="h-5 w-5 text-white" />
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">5,280</div>
-                  <p className="text-xs text-muted-foreground">+12% from last month</p>
+                  <div className="text-3xl font-bold text-gray-900">5,280</div>
+                  <p className="text-sm text-green-600 flex items-center gap-1 mt-1">
+                    <TrendingUp className="h-3 w-3" />
+                    +12% from last month
+                  </p>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="border-0 shadow-lg bg-gradient-to-br from-red-50 to-rose-100 hover:shadow-xl transition-all duration-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">High Risk</CardTitle>
-                  <AlertTriangle className="h-4 w-4 text-red-500" />
+                  <CardTitle className="text-sm font-medium text-gray-700">High Risk</CardTitle>
+                  <div className="h-10 w-10 bg-red-500 rounded-lg flex items-center justify-center">
+                    <AlertTriangle className="h-5 w-5 text-white" />
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-red-500">156</div>
-                  <p className="text-xs text-muted-foreground">-5% from last week</p>
+                  <div className="text-3xl font-bold text-red-600">156</div>
+                  <p className="text-sm text-green-600 flex items-center gap-1 mt-1">
+                    <TrendingUp className="h-3 w-3 rotate-180" />
+                    -5% from last week
+                  </p>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="border-0 shadow-lg bg-gradient-to-br from-amber-50 to-orange-100 hover:shadow-xl transition-all duration-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Cases</CardTitle>
-                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium text-gray-700">Active Cases</CardTitle>
+                  <div className="h-10 w-10 bg-amber-500 rounded-lg flex items-center justify-center">
+                    <FileText className="h-5 w-5 text-white" />
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">23</div>
-                  <p className="text-xs text-muted-foreground">+3 new today</p>
+                  <div className="text-3xl font-bold text-amber-600">23</div>
+                  <p className="text-sm text-blue-600 flex items-center gap-1 mt-1">
+                    <Plus className="h-3 w-3" />
+                    +3 new today
+                  </p>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="border-0 shadow-lg bg-gradient-to-br from-emerald-50 to-green-100 hover:shadow-xl transition-all duration-300">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Compliance Score</CardTitle>
-                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <CardTitle className="text-sm font-medium text-gray-700">Compliance Score</CardTitle>
+                  <div className="h-10 w-10 bg-emerald-500 rounded-lg flex items-center justify-center">
+                    <CheckCircle className="h-5 w-5 text-white" />
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-500">98.5%</div>
-                  <p className="text-xs text-muted-foreground">+0.2% this month</p>
+                  <div className="text-3xl font-bold text-emerald-600">98.5%</div>
+                  <p className="text-sm text-green-600 flex items-center gap-1 mt-1">
+                    <TrendingUp className="h-3 w-3" />
+                    +0.2% this month
+                  </p>
                 </CardContent>
               </Card>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Transactions</CardTitle>
+              <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+                <CardHeader className="bg-gradient-to-r from-slate-50 to-gray-50 rounded-t-lg">
+                  <CardTitle className="flex items-center gap-2 text-gray-800">
+                    <Activity className="h-5 w-5 text-blue-500" />
+                    Recent Transactions
+                  </CardTitle>
+                  <CardDescription>Latest transaction activity</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-6">
                   <div className="space-y-4">
-                    {mockTransactions.slice(0, 5).map(tx => <div key={tx.id} className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">{tx.id}</p>
-                          <p className="text-sm text-muted-foreground">${tx.amount.toLocaleString()}</p>
+                    {mockTransactions.slice(0, 5).map(tx => <div key={tx.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50/50 hover:bg-gray-100/50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <DollarSign className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900">{tx.id}</p>
+                            <p className="text-sm text-gray-600 flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              {tx.country} • ${tx.amount.toLocaleString()}
+                            </p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <Badge className={getStatusBadge(tx.status)}>{tx.status}</Badge>
-                          <p className={`text-sm font-medium ${getRiskColor(tx.riskScore)}`}>
+                        <div className="text-right space-y-1">
+                          <Badge className={getStatusBadge(tx.status) + " font-medium"}>{tx.status}</Badge>
+                          <p className={`text-sm font-semibold ${getRiskColor(tx.riskScore)}`}>
                             Risk: {tx.riskScore}
                           </p>
                         </div>
@@ -505,19 +537,34 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Active Alerts</CardTitle>
+              <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+                <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50 rounded-t-lg">
+                  <CardTitle className="flex items-center gap-2 text-gray-800">
+                    <Bell className="h-5 w-5 text-red-500" />
+                    Active Alerts
+                  </CardTitle>
+                  <CardDescription>Critical alerts requiring attention</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-6">
                   <div className="space-y-4">
-                    {mockAlerts.map(alert => <div key={alert.id} className="flex items-start space-x-3">
-                        <AlertCircle className={`h-5 w-5 mt-0.5 ${alert.severity === 'high' ? 'text-red-500' : alert.severity === 'medium' ? 'text-yellow-500' : 'text-blue-500'}`} />
-                        <div className="flex-1">
-                          <p className="font-medium">{alert.reason}</p>
-                          <p className="text-sm text-muted-foreground">{alert.account}</p>
+                    {mockAlerts.map(alert => <div key={alert.id} className="flex items-start space-x-3 p-3 rounded-lg bg-gray-50/50 hover:bg-gray-100/50 transition-colors">
+                        <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                          alert.severity === 'high' ? 'bg-red-100' : 
+                          alert.severity === 'medium' ? 'bg-yellow-100' : 'bg-blue-100'
+                        }`}>
+                          <AlertCircle className={`h-5 w-5 ${
+                            alert.severity === 'high' ? 'text-red-500' : 
+                            alert.severity === 'medium' ? 'text-yellow-500' : 'text-blue-500'
+                          }`} />
                         </div>
-                        <Badge variant={alert.severity === 'high' ? 'destructive' : 'secondary'}>
+                        <div className="flex-1">
+                          <p className="font-semibold text-gray-900">{alert.reason}</p>
+                          <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
+                            <Users className="h-3 w-3" />
+                            {alert.account} • <Clock className="h-3 w-3" /> {alert.timestamp}
+                          </p>
+                        </div>
+                        <Badge variant={alert.severity === 'high' ? 'destructive' : 'secondary'} className="font-medium">
                           {alert.severity}
                         </Badge>
                       </div>)}
@@ -676,66 +723,87 @@ const Dashboard = () => {
 
   const ApiManagementContent: React.FC = () => {
     return <div className="space-y-6">
-        <Card>
-          <CardHeader>
+        <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <CardHeader className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-t-lg">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>API Key Management</CardTitle>
-                <CardDescription>Manage your API keys and monitor usage</CardDescription>
+                <CardTitle className="flex items-center gap-2 text-gray-800">
+                  <Key className="h-5 w-5 text-emerald-500" />
+                  API Key Management
+                </CardTitle>
+                <CardDescription className="text-gray-600">Manage your API keys and monitor usage securely</CardDescription>
               </div>
-              <Button onClick={() => setShowCreateDialog(true)} className="bg-black hover:bg-gray-800 text-white">
+              <Button onClick={() => setShowCreateDialog(true)} className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white shadow-lg hover:shadow-xl transition-all duration-300">
                 <Plus className="h-4 w-4 mr-2" />
                 Create New API Key
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <div className="space-y-4">
-              {apiKeys.length === 0 ? <div className="text-center py-8 text-muted-foreground">
-                  No API keys found. Create your first API key to get started.
-                </div> : apiKeys.map(apiKey => <div key={apiKey.id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-medium">{apiKey.name}</h3>
+              {apiKeys.length === 0 ? <div className="text-center py-12">
+                  <div className="h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Key className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <p className="text-gray-500 text-lg">No API keys found</p>
+                  <p className="text-gray-400 text-sm">Create your first API key to get started with our platform</p>
+                </div> : apiKeys.map(apiKey => <div key={apiKey.id} className="border-0 rounded-xl p-6 bg-gradient-to-r from-gray-50 to-slate-50 hover:from-gray-100 hover:to-slate-100 transition-all duration-300 shadow-sm hover:shadow-md">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                          <Key className="h-5 w-5 text-emerald-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{apiKey.name}</h3>
+                          <p className="text-sm text-gray-500">Partner ID: {apiKey.partner_id}</p>
+                        </div>
+                      </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant={apiKey.is_active ? "secondary" : "outline"}>
-                          {apiKey.is_active ? "active" : "inactive"}
+                        <Badge variant={apiKey.is_active ? "default" : "outline"} className={apiKey.is_active ? "bg-emerald-100 text-emerald-700 border-emerald-200" : ""}>
+                          {apiKey.is_active ? "Active" : "Inactive"}
                         </Badge>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between mb-2">
-                      <code className="bg-muted px-2 py-1 rounded text-sm flex-1 mr-2">
+                    <div className="flex items-center justify-between mb-4 p-3 bg-white rounded-lg border border-gray-200">
+                      <code className="text-sm text-gray-800 font-mono flex-1 mr-3">
                         {visibleKeys.has(apiKey.id) ? apiKey.key : maskApiKey(apiKey.key)}
                       </code>
-                      <div className="flex items-center gap-1">
-                        <Button size="sm" variant="outline" onClick={() => copyToClipboard(apiKey.key, "API key")}>
-                          <Copy className="h-4 w-4" />
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" onClick={() => copyToClipboard(apiKey.key, "API key")} className="h-8 w-8 p-0 hover:bg-blue-50 hover:border-blue-200">
+                          <Copy className="h-4 w-4 text-blue-600" />
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => toggleKeyVisibility(apiKey.id)}>
-                          {visibleKeys.has(apiKey.id) ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        <Button size="sm" variant="outline" onClick={() => toggleKeyVisibility(apiKey.id)} className="h-8 w-8 p-0 hover:bg-gray-50">
+                          {visibleKeys.has(apiKey.id) ? <EyeOff className="h-4 w-4 text-gray-600" /> : <Eye className="h-4 w-4 text-gray-600" />}
                         </Button>
                       </div>
                     </div>
-                    <div className="flex justify-between text-sm text-muted-foreground mb-3">
-                      <span>Created: {formatDate(apiKey.created_at)}</span>
-                      <span>Last used: {apiKey.last_used_at ? formatDate(apiKey.last_used_at) : "Never"}</span>
+                    <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Calendar className="h-4 w-4" />
+                        <span>Created: {formatDate(apiKey.created_at)}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Clock className="h-4 w-4" />
+                        <span>Last used: {apiKey.last_used_at ? formatDate(apiKey.last_used_at) : "Never"}</span>
+                      </div>
                     </div>
                     <div className="flex justify-between items-center">
-                      <label className="flex items-center gap-2 text-sm">
-                        <input type="checkbox" checked={apiKey.is_active} onChange={() => toggleKeyStatus(apiKey.id, apiKey.is_active)} className="rounded" />
-                        Enabled
+                      <label className="flex items-center gap-3 text-sm cursor-pointer">
+                        <input type="checkbox" checked={apiKey.is_active} onChange={() => toggleKeyStatus(apiKey.id, apiKey.is_active)} className="rounded border-gray-300 text-emerald-500 focus:ring-emerald-500" />
+                        <span className="font-medium text-gray-700">Enabled</span>
                       </label>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button size="sm" variant="ghost">
+                          <Button size="sm" variant="outline" className="h-8 w-8 p-0 hover:bg-gray-50">
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-background border border-border">
-                          <DropdownMenuItem onClick={() => rotateApiKey(apiKey.id)}>
-                            <RotateCcw className="h-4 w-4 mr-2" />
+                        <DropdownMenuContent align="end" className="bg-white border border-gray-200 shadow-lg">
+                          <DropdownMenuItem onClick={() => rotateApiKey(apiKey.id)} className="hover:bg-blue-50">
+                            <RotateCcw className="h-4 w-4 mr-2 text-blue-600" />
                             Rotate API Key
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDeleteClick(apiKey)} className="text-red-600 hover:text-red-700">
+                          <DropdownMenuItem onClick={() => handleDeleteClick(apiKey)} className="text-red-600 hover:text-red-700 hover:bg-red-50">
                             <Trash2 className="h-4 w-4 mr-2" />
                             Delete API Key
                           </DropdownMenuItem>
