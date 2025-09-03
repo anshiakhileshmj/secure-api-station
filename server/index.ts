@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' ? 'https://your-frontend-domain.com' : 'http://localhost:5000',
+  origin: process.env.NODE_ENV === 'production' ? 'https://your-frontend-domain.com' : ['http://localhost:5000', `https://${process.env.REPLIT_DEV_DOMAIN}`],
   credentials: true
 }));
 app.use(express.json());
@@ -27,6 +27,6 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, 'localhost', () => {
   console.log(`Server running on port ${PORT}`);
 });
