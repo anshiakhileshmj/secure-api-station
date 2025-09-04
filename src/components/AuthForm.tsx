@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from 'react-router-dom';
+import { User, Building, Briefcase, Mail, Lock, Globe, Building2 } from 'lucide-react';
 import CustomDropdown from './CustomDropdown';
 import { COUNTRIES, BUSINESS_TYPES } from '@/constants/formData';
 
@@ -316,12 +317,34 @@ const AuthForm = () => {
             font-size: 15px;
             font-weight: 600;
             color: var(--font-color);
-            padding: 5px 10px;
+            padding: 5px 10px 5px 40px;
             outline: none;
             box-sizing: border-box;
             flex: 1;
             min-width: 0;
             max-width: 250px;
+          }
+          
+          .input-container {
+            position: relative;
+            flex: 1;
+            min-width: 0;
+            max-width: 250px;
+          }
+          
+          .input-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--font-color-sub);
+            z-index: 1;
+            pointer-events: none;
+          }
+          
+          .phone-input-container .flip-card__input,
+          .phone-input-container .phone-number {
+            padding: 5px 10px;
           }
           .flip-card__input::placeholder, .phone-number::placeholder {
             color: var(--font-color-sub);
@@ -429,121 +452,145 @@ const AuthForm = () => {
             <h1 className="title">Sign up</h1>
             <form onSubmit={handleSubmit}>
               <div className="row-top">
-                <input
-                  type="text"
-                  placeholder="First Name"
-                  className="flip-card__input"
-                  aria-label="First Name"
-                  required
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                />
-                <input
-                  type="text"
-                  placeholder="Last Name"
-                  className="flip-card__input"
-                  aria-label="Last Name"
-                  required
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                />
+                <div className="input-container">
+                  <User className="input-icon" size={18} />
+                  <input
+                    type="text"
+                    placeholder="First Name"
+                    className="flip-card__input"
+                    aria-label="First Name"
+                    required
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                  />
+                </div>
+                <div className="input-container">
+                  <User className="input-icon" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Last Name"
+                    className="flip-card__input"
+                    aria-label="Last Name"
+                    required
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                  />
+                </div>
               </div>
               <div className="row-top">
-                <input
-                  type="text"
-                  placeholder="Company Name"
-                  className="flip-card__input"
-                  aria-label="Company Name"
-                  required
-                  style={{ maxWidth: 250 }}
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                />
-                <input
-                  type="text"
-                  placeholder="Job Title"
-                  className="flip-card__input"
-                  aria-label="Job Title"
-                  required
-                  style={{ maxWidth: 250 }}
-                  value={jobTitle}
-                  onChange={(e) => setJobTitle(e.target.value)}
-                />
+                <div className="input-container">
+                  <Building className="input-icon" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Company Name"
+                    className="flip-card__input"
+                    aria-label="Company Name"
+                    required
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                  />
+                </div>
+                <div className="input-container">
+                  <Briefcase className="input-icon" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Job Title"
+                    className="flip-card__input"
+                    aria-label="Job Title"
+                    required
+                    value={jobTitle}
+                    onChange={(e) => setJobTitle(e.target.value)}
+                  />
+                </div>
               </div>
               <div className="row-top">
-                <input
-                  type="email"
-                  placeholder="Email"
-                  className="flip-card__input"
-                  aria-label="Email"
-                  required
-                  style={{ maxWidth: 250 }}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-                <input
-                  ref={phoneInputRef}
-                  id="phone"
-                  type="tel"
-                  name="phone"
-                  className="phone-number"
-                  aria-label="Phone number"
-                  required
-                  style={{ maxWidth: 250 }}
-                />
-              </div>
-              <div className="row-top">
-                <input
-                  type="password"
-                  placeholder="Password"
-                  className="flip-card__input"
-                  aria-label="Password"
-                  required
-                  style={{ maxWidth: 250 }}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <input
-                  type="password"
-                  placeholder="Confirm password"
-                  className="flip-card__input"
-                  aria-label="Confirm password"
-                  required
-                  style={{ maxWidth: 250 }}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
-              </div>
-              <div className="phone-country-row" aria-label="Country and business type selection">
-                <div style={{ flex: 1, minWidth: 0, maxWidth: 250 }}>
-                  <CustomDropdown
-                    options={[
-                      { value: "", label: "Select country" },
-                      ...COUNTRIES.map((c) => ({
-                        value: c.code,
-                        label: c.name,
-                      })),
-                    ]}
-                    placeholder="Select country"
-                    value={country}
-                    onChange={setCountry}
+                <div className="input-container">
+                  <Mail className="input-icon" size={18} />
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    className="flip-card__input"
+                    aria-label="Email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+                {/* Phone input without icon as requested */}
+                <div className="phone-input-container" style={{ flex: 1, minWidth: 0, maxWidth: 250 }}>
+                  <input
+                    ref={phoneInputRef}
+                    id="phone"
+                    type="tel"
+                    name="phone"
+                    className="phone-number"
+                    aria-label="Phone number"
                     required
                   />
                 </div>
-                <div style={{ flex: 1, minWidth: 0, maxWidth: 250 }}>
-                  <CustomDropdown
-                    options={[
-                      { value: "", label: "Select business type" },
-                      ...BUSINESS_TYPES.map((b) => ({
-                        value: b.toLowerCase().replace(/\s+/g, "-"),
-                        label: b,
-                      })),
-                    ]}
-                    placeholder="Select business type"
-                    value={businessType}
-                    onChange={setBusinessType}
+              </div>
+              <div className="row-top">
+                <div className="input-container">
+                  <Lock className="input-icon" size={18} />
+                  <input
+                    type="password"
+                    placeholder="Password"
+                    className="flip-card__input"
+                    aria-label="Password"
                     required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                   />
+                </div>
+                <div className="input-container">
+                  <Lock className="input-icon" size={18} />
+                  <input
+                    type="password"
+                    placeholder="Confirm password"
+                    className="flip-card__input"
+                    aria-label="Confirm password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="phone-country-row" aria-label="Country and business type selection">
+                <div className="input-container">
+                  <Globe className="input-icon" size={18} />
+                  <div style={{ paddingLeft: 30 }}>
+                    <CustomDropdown
+                      options={[
+                        { value: "", label: "Select country" },
+                        ...COUNTRIES.map((c) => ({
+                          value: c.code,
+                          label: c.name,
+                        })),
+                      ]}
+                      placeholder="Select country"
+                      value={country}
+                      onChange={setCountry}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="input-container">
+                  <Building2 className="input-icon" size={18} />
+                  <div style={{ paddingLeft: 30 }}>
+                    <CustomDropdown
+                      options={[
+                        { value: "", label: "Select business type" },
+                        ...BUSINESS_TYPES.map((b) => ({
+                          value: b.toLowerCase().replace(/\s+/g, "-"),
+                          label: b,
+                        })),
+                      ]}
+                      placeholder="Select business type"
+                      value={businessType}
+                      onChange={setBusinessType}
+                      required
+                    />
+                  </div>
                 </div>
               </div>
               <button 
@@ -564,28 +611,32 @@ const AuthForm = () => {
             <h1 className="title">Sign in</h1>
             <form onSubmit={handleSubmit}>
               <div className="row-top">
-                <input
-                  type="email"
-                  placeholder="Email"
-                  className="flip-card__input"
-                  aria-label="Email"
-                  required
-                  style={{ maxWidth: 250 }}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
+                <div className="input-container">
+                  <Mail className="input-icon" size={18} />
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    className="flip-card__input"
+                    aria-label="Email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
               </div>
               <div className="row-top">
-                <input
-                  type="password"
-                  placeholder="Password"
-                  className="flip-card__input"
-                  aria-label="Password"
-                  required
-                  style={{ maxWidth: 250 }}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+                <div className="input-container">
+                  <Lock className="input-icon" size={18} />
+                  <input
+                    type="password"
+                    placeholder="Password"
+                    className="flip-card__input"
+                    aria-label="Password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
               </div>
               <button 
                 type="submit" 
