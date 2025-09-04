@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from 'react-router-dom';
-import { User, Building, Briefcase, Mail, Lock, Globe, Building2 } from 'lucide-react';
+import { User, Building, Briefcase, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import CustomDropdown from './CustomDropdown';
 import { COUNTRIES, BUSINESS_TYPES } from '@/constants/formData';
 
@@ -28,6 +28,8 @@ const AuthForm = () => {
   const [businessType, setBusinessType] = useState('');
   const [isSignUp, setIsSignUp] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const phoneInputRef = useRef<HTMLInputElement>(null);
   const itiRef = useRef<any>(null);
 
@@ -219,6 +221,8 @@ const AuthForm = () => {
     setPhone('');
     setCountry('');
     setBusinessType('');
+    setShowPassword(false);
+    setShowConfirmPassword(false);
     
     // Cleanup intl-tel-input when switching forms
     if (itiRef.current) {
@@ -340,6 +344,20 @@ const AuthForm = () => {
             color: var(--font-color-sub);
             z-index: 1;
             pointer-events: none;
+          }
+          
+          .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--font-color-sub);
+            cursor: pointer;
+            z-index: 1;
+          }
+          
+          .password-toggle:hover {
+            color: var(--font-color);
           }
           
           .phone-input-container .flip-card__input,
@@ -533,7 +551,7 @@ const AuthForm = () => {
                 <div className="input-container">
                   <Lock className="input-icon" size={18} />
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="Password"
                     className="flip-card__input"
                     aria-label="Password"
@@ -541,11 +559,24 @@ const AuthForm = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
+                  {showPassword ? (
+                    <EyeOff 
+                      className="password-toggle" 
+                      size={18} 
+                      onClick={() => setShowPassword(false)}
+                    />
+                  ) : (
+                    <Eye 
+                      className="password-toggle" 
+                      size={18} 
+                      onClick={() => setShowPassword(true)}
+                    />
+                  )}
                 </div>
                 <div className="input-container">
                   <Lock className="input-icon" size={18} />
                   <input
-                    type="password"
+                    type={showConfirmPassword ? "text" : "password"}
                     placeholder="Confirm password"
                     className="flip-card__input"
                     aria-label="Confirm password"
@@ -553,44 +584,51 @@ const AuthForm = () => {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                   />
+                  {showConfirmPassword ? (
+                    <EyeOff 
+                      className="password-toggle" 
+                      size={18} 
+                      onClick={() => setShowConfirmPassword(false)}
+                    />
+                  ) : (
+                    <Eye 
+                      className="password-toggle" 
+                      size={18} 
+                      onClick={() => setShowConfirmPassword(true)}
+                    />
+                  )}
                 </div>
               </div>
               <div className="phone-country-row" aria-label="Country and business type selection">
-                <div className="input-container">
-                  <Globe className="input-icon" size={18} />
-                  <div style={{ paddingLeft: 30 }}>
-                    <CustomDropdown
-                      options={[
-                        { value: "", label: "Select country" },
-                        ...COUNTRIES.map((c) => ({
-                          value: c.code,
-                          label: c.name,
-                        })),
-                      ]}
-                      placeholder="Select country"
-                      value={country}
-                      onChange={setCountry}
-                      required
-                    />
-                  </div>
+                <div style={{ flex: 1, minWidth: 0, maxWidth: 250 }}>
+                  <CustomDropdown
+                    options={[
+                      { value: "", label: "Select country" },
+                      ...COUNTRIES.map((c) => ({
+                        value: c.code,
+                        label: c.name,
+                      })),
+                    ]}
+                    placeholder="Select country"
+                    value={country}
+                    onChange={setCountry}
+                    required
+                  />
                 </div>
-                <div className="input-container">
-                  <Building2 className="input-icon" size={18} />
-                  <div style={{ paddingLeft: 30 }}>
-                    <CustomDropdown
-                      options={[
-                        { value: "", label: "Select business type" },
-                        ...BUSINESS_TYPES.map((b) => ({
-                          value: b.toLowerCase().replace(/\s+/g, "-"),
-                          label: b,
-                        })),
-                      ]}
-                      placeholder="Select business type"
-                      value={businessType}
-                      onChange={setBusinessType}
-                      required
-                    />
-                  </div>
+                <div style={{ flex: 1, minWidth: 0, maxWidth: 250 }}>
+                  <CustomDropdown
+                    options={[
+                      { value: "", label: "Select business type" },
+                      ...BUSINESS_TYPES.map((b) => ({
+                        value: b.toLowerCase().replace(/\s+/g, "-"),
+                        label: b,
+                      })),
+                    ]}
+                    placeholder="Select business type"
+                    value={businessType}
+                    onChange={setBusinessType}
+                    required
+                  />
                 </div>
               </div>
               <button 
