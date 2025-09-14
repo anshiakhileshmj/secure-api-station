@@ -7,6 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Building2, Mail, Globe, Phone, MapPin, Calendar, Award } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface DeveloperProfile {
@@ -32,12 +36,20 @@ const ProfileSettings = () => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  
+  // Additional profile fields
+  const [bio, setBio] = useState('');
+  const [location, setLocation] = useState('');
+  const [joinDate, setJoinDate] = useState('');
 
   useEffect(() => {
     if (user) {
       fetchDeveloperProfile();
       setEmail(user.email || '');
       setName(user.user_metadata?.full_name || 'Jane Doe');
+      setBio(user.user_metadata?.bio || '');
+      setLocation(user.user_metadata?.location || '');
+      setJoinDate(user.created_at ? new Date(user.created_at).toLocaleDateString() : '');
     }
   }, [user]);
 
@@ -140,42 +152,78 @@ const ProfileSettings = () => {
         {/* Profile Section */}
         <Card>
           <CardHeader>
-            <CardTitle>Profile</CardTitle>
-            <CardDescription>Public details for your developer account.</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Profile Information
+            </CardTitle>
+            <CardDescription>Manage your public developer profile</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16">
                 <AvatarImage src="" />
-                <AvatarFallback className="bg-orange-100 text-orange-600 text-lg font-medium">
+                <AvatarFallback className="bg-blue-100 text-blue-600 text-lg font-medium">
                   {getUserInitials()}
                 </AvatarFallback>
               </Avatar>
-              <Button variant="outline" size="sm">
-                Change
-              </Button>
+              <div className="space-y-1">
+                <Button variant="outline" size="sm">
+                  Change Photo
+                </Button>
+                <p className="text-xs text-muted-foreground">JPG, PNG up to 2MB</p>
+              </div>
             </div>
 
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Jane Doe"
-                />
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Jane Doe"
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="jane@company.com"
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="jane@company.com"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="bio">Bio</Label>
+                <Textarea
+                  id="bio"
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder="Tell us about yourself and your work..."
+                  rows={3}
                 />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="location">Location</Label>
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="location"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="San Francisco, CA"
+                  />
+                </div>
               </div>
             </div>
           </CardContent>
@@ -184,10 +232,29 @@ const ProfileSettings = () => {
         {/* Security Section */}
         <Card>
           <CardHeader>
-            <CardTitle>Security</CardTitle>
-            <CardDescription>Update password and sessions.</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              Security Settings
+            </CardTitle>
+            <CardDescription>Manage your account security and authentication</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Account Status</Label>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Verified
+                </Badge>
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                  <Calendar className="h-3 w-3 mr-1" />
+                  Joined {joinDate}
+                </Badge>
+              </div>
+            </div>
+            
+            <Separator />
+            
             <div className="space-y-2">
               <Label htmlFor="currentPassword">Current password</Label>
               <Input
@@ -224,13 +291,40 @@ const ProfileSettings = () => {
             <Button 
               onClick={updatePassword}
               disabled={updatingPassword || !currentPassword || !newPassword || !confirmPassword}
-              className="bg-gray-900 hover:bg-gray-800 text-white"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               {updatingPassword ? 'Updating...' : 'Update password'}
             </Button>
           </CardContent>
         </Card>
       </div>
+      
+      {/* Developer Stats */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Award className="h-5 w-5" />
+            Developer Statistics
+          </CardTitle>
+          <CardDescription>Your API usage and performance metrics</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center p-4 bg-blue-50 rounded-lg">
+              <div className="text-2xl font-bold text-blue-900">12,847</div>
+              <div className="text-sm text-blue-600">Total API Calls</div>
+            </div>
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <div className="text-2xl font-bold text-green-900">99.2%</div>
+              <div className="text-sm text-green-600">Success Rate</div>
+            </div>
+            <div className="text-center p-4 bg-purple-50 rounded-lg">
+              <div className="text-2xl font-bold text-purple-900">142ms</div>
+              <div className="text-sm text-purple-600">Avg Response Time</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

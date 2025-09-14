@@ -6,9 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Loader2, AlertTriangle, CheckCircle, Play, Code, Terminal, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface ApiTesterProps {
   apiKey: string | null;
@@ -29,6 +30,8 @@ export default function ApiTester({ apiKey }: ApiTesterProps) {
   const [error, setError] = useState<string | null>(null);
   const [customAddress, setCustomAddress] = useState('');
   const [selectedTestAddress, setSelectedTestAddress] = useState('');
+  const [requestBody, setRequestBody] = useState('');
+  const [responseTime, setResponseTime] = useState<number | null>(null);
 
   const testCheckEndpoint = async (toAddress: string) => {
     if (!apiKey) {
@@ -40,10 +43,21 @@ export default function ApiTester({ apiKey }: ApiTesterProps) {
     setLoading(true);
     setResult(null);
     setError(null);
+    const startTime = Date.now();
 
     try {
       console.log('Making API request with key:', apiKey.substring(0, 10) + '...');
       console.log('Testing address:', toAddress);
+      
+      const requestPayload = {
+        chain: 'ethereum',
+        to: toAddress,
+        from: '0x742d35Cc6645C0532979A1f8A4D5fB2C61a8BaF6',
+        value: '1000000000000000000',
+        asset: 'ETH'
+      };
+      
+      setRequestBody(JSON.stringify(requestPayload, null, 2));
       
       const response = await fetch('https://resumeak.onrender.com/v1/check', {
         method: 'POST',
@@ -51,14 +65,11 @@ export default function ApiTester({ apiKey }: ApiTesterProps) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
         },
-        body: JSON.stringify({
-          chain: 'ethereum',
-          to: toAddress,
-          from: '0x742d35Cc6645C0532979A1f8A4D5fB2C61a8BaF6',
-          value: '1000000000000000000',
-          asset: 'ETH'
-        }),
+        body: JSON.stringify(requestPayload),
       });
+
+      const endTime = Date.now();
+      setResponseTime(endTime - startTime);
 
       if (!response.ok) {
         const errorData = await response.text();
@@ -148,9 +159,28 @@ export default function ApiTester({ apiKey }: ApiTesterProps) {
   };
 
   return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">API Tester</h2>
+          <p className="text-slate-600 mt-1">Test your API endpoints with real requests</p>
+        </div>
+        <Button 
+          variant="outline" 
+          onClick={() => window.open('/docs', '_blank')}
+        >
+          <ExternalLink className="h-4 w-4 mr-2" />
+          View Documentation
+        </Button>
+      </div>
+
     <Card>
       <CardHeader>
-        <CardTitle>API Endpoint Tester</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <Terminal className="h-5 w-5" />
+          API Endpoint Tester
+        </CardTitle>
         <CardDescription>
           Test the /v1/check and /v1/relay endpoints with your API key
         </CardDescription>
@@ -243,43 +273,145 @@ export default function ApiTester({ apiKey }: ApiTesterProps) {
               Testing...
             </>
           ) : (
-            `Test ${endpoint === 'check' ? '/v1/check' : '/v1/relay'} Endpoint`
+            <>
+              <Play className="h-4 w-4 mr-2" />
+              Test {endpoint === 'check' ? '/v1/check' : '/v1/relay'} Endpoint
+            </>
           )}
         </Button>
 
-        {result && (
-          <div className="space-y-3 mt-4">
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <Label className="text-sm font-medium">API Response:</Label>
-              <pre className="text-xs mt-1 overflow-x-auto">
-                {JSON.stringify(result, null, 2)}
-              </pre>
-            </div>
-            {result.allowed !== undefined && (
-              <div className="flex items-center gap-2">
-                <Badge variant={result.allowed ? "default" : "destructive"}>
-                  {result.allowed ? (
+        {(result || error) && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Code className="h-5 w-5" />
+                Test Results
+                {responseTime && (
+                  <Badge variant="outline" className="ml-auto">
+                    {responseTime}ms
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="response" className="space-y-4">
+                <TabsList>
+                  <TabsTrigger value="response">Response</TabsTrigger>
+                  <TabsTrigger value="request">Request</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="response" className="space-y-4">
+                  {result && (
                     <>
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      Allowed
-                    </>
-                  ) : (
-                    <>
-                      <AlertTriangle className="h-3 w-3 mr-1" />
-                      Blocked
+                      <div className="flex items-center gap-2 mb-4">
+                        <Badge variant={result.allowed ? "default" : "destructive"}>
+                          {result.allowed ? (
+                            <>
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Allowed
+                            </>
+                          ) : (
+                            <>
+                              <AlertTriangle className="h-3 w-3 mr-1" />
+                              Blocked
+                            </>
+                          )}
+                        </Badge>
+                        {result.risk_band && (
+                          <Badge variant="outline">
+                            {result.risk_band} Risk
+                          </Badge>
+                        )}
+                        {result.risk_score !== undefined && (
+                          <Badge variant="secondary">
+                            Score: {result.risk_score}
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <div className="bg-slate-50 p-4 rounded-lg">
+                        <Label className="text-sm font-medium">Response Body:</Label>
+                        <pre className="text-xs mt-2 overflow-x-auto bg-white p-3 rounded border">
+                          {JSON.stringify(result, null, 2)}
+                        </pre>
+                      </div>
                     </>
                   )}
-                </Badge>
-                {result.risk_band && (
-                  <Badge variant="outline">
-                    {result.risk_band} Risk
-                  </Badge>
-                )}
-                {result.risk_score !== undefined && (
-                  <Badge variant="secondary">
-                    Score: {result.risk_score}
-                  </Badge>
-                )}
+                  
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 p-4 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                        <span className="font-medium text-red-800">Error Response</span>
+                      </div>
+                      <pre className="text-xs text-red-700 bg-white p-3 rounded border">
+                        {error}
+                      </pre>
+                    </div>
+                  )}
+                </TabsContent>
+                
+                <TabsContent value="request" className="space-y-4">
+                  <div className="bg-slate-50 p-4 rounded-lg">
+                    <Label className="text-sm font-medium">Request Body:</Label>
+                    <pre className="text-xs mt-2 overflow-x-auto bg-white p-3 rounded border">
+                      {requestBody || 'No request sent yet'}
+                    </pre>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        )}
+      </CardContent>
+    </Card>
+    
+    {/* Quick Test Buttons */}
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Play className="h-5 w-5" />
+          Quick Tests
+        </CardTitle>
+        <CardDescription>Pre-configured test scenarios</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Button 
+            variant="outline" 
+            className="h-auto p-4 flex flex-col items-center gap-2 hover:bg-green-50 hover:border-green-200"
+            onClick={() => {
+              setSelectedTestAddress(CLEAN_TEST_ADDRESS);
+              setCustomAddress('');
+              testCheckEndpoint(CLEAN_TEST_ADDRESS);
+            }}
+            disabled={loading || !apiKey}
+          >
+            <CheckCircle className="h-6 w-6 text-green-600" />
+            <span className="font-medium">Test Clean Address</span>
+            <span className="text-xs text-muted-foreground">Should be allowed</span>
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            className="h-auto p-4 flex flex-col items-center gap-2 hover:bg-red-50 hover:border-red-200"
+            onClick={() => {
+              setSelectedTestAddress(SANCTIONED_TEST_ADDRESSES[0]);
+              setCustomAddress('');
+              testCheckEndpoint(SANCTIONED_TEST_ADDRESSES[0]);
+            }}
+            disabled={loading || !apiKey}
+          >
+            <AlertTriangle className="h-6 w-6 text-red-600" />
+            <span className="font-medium">Test Sanctioned Address</span>
+            <span className="text-xs text-muted-foreground">Should be blocked</span>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+    </div>
+  );
+}
               </div>
             )}
             {result.reasons && result.reasons.length > 0 && (

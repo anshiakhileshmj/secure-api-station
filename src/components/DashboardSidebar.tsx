@@ -1,7 +1,15 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, Key, User, Settings, Moon, LogOut, Building2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { 
+  LayoutDashboard, Key, User, Settings, Moon, LogOut, Building2, 
+  ChevronLeft, ChevronRight, BarChart3, TestTube, BookOpen, 
+  Shield, CreditCard, Bell, Palette, Database, Code, Activity
+} from 'lucide-react';
+  LayoutDashboard, Key, User, Settings, Moon, LogOut, Building2, 
+  ChevronLeft, ChevronRight, BarChart3, TestTube, BookOpen, 
+  Shield, CreditCard, Bell, Palette, Database, Code
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 interface DashboardSidebarProps {
@@ -22,15 +30,30 @@ const DashboardSidebar = ({
   } = useAuth();
   const location = useLocation();
   const navigationItems = [{
-    category: 'MAIN',
+    category: 'OVERVIEW',
     items: [{
       id: 'overview',
       label: 'Dashboard',
       icon: LayoutDashboard
-    }, {
+    }]
+  }, {
+    category: 'API MANAGEMENT',
+    items: [{
       id: 'keys',
       label: 'API Keys',
       icon: Key
+    }, {
+      id: 'analytics',
+      label: 'Analytics',
+      icon: BarChart3
+    }, {
+      id: 'test',
+      label: 'API Tester',
+      icon: TestTube
+    }, {
+      id: 'docs',
+      label: 'Documentation',
+      icon: BookOpen
     }]
   }, {
     category: 'ACCOUNT',
@@ -42,6 +65,18 @@ const DashboardSidebar = ({
       id: 'settings',
       label: 'Settings',
       icon: Settings
+    }, {
+      id: 'analytics',
+      label: 'Analytics',
+      icon: BarChart3
+    }, {
+      id: 'test',
+      label: 'API Tester',
+      icon: TestTube
+    }, {
+      id: 'docs',
+      label: 'Documentation',
+      icon: BookOpen
     }]
   }];
   const handleSignOut = async () => {
